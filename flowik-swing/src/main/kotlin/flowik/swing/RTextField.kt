@@ -2,11 +2,14 @@ package flowik.swing
 
 import flowik.core.ObservableValue
 import flowik.core.action
+import flowik.core.unwrapBinding
 import flowik.layout.PanelScope
 import java.awt.Dimension
 import javax.swing.JTextField
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
+import kotlin.reflect.KProperty0
+import kotlin.reflect.jvm.isAccessible
 
 /**
  * A reactive text field with **two-way binding**.
@@ -50,3 +53,8 @@ class RTextField(columns: Int = 20) : JTextField(columns), RComponent {
 
 fun PanelScope.TextField(model: ObservableValue<String>, columns: Int = 20): RTextField =
     RTextField(columns).also { it.bindValue(model); panel.add(it) }
+
+@Suppress("UNCHECKED_CAST")
+fun PanelScope.TextField(prop: KProperty0<String>, columns: Int = 20): RTextField {
+    return TextField(unwrapBinding(prop), columns)
+}

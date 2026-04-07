@@ -35,6 +35,8 @@ class Observable<T : Any>(private val initial: T) {
      * Note: this reflects the *initial* state of [T], not any property
      * mutations made via [get].  Use it for list-level map / filter / flatMap
      * where property-level reactivity is not required.
+     *
+     * Must be mostly used for immutable data structures, when you do not mutate properties of items.
      */
     val value: T get() = initial
 

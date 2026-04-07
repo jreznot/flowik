@@ -1,5 +1,8 @@
 package flowik.core
 
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
+
 /**
  * An [ObservableItems] that automatically wraps each added [T] in an
  * [Observable], so callers work with plain data values while the list
@@ -16,8 +19,8 @@ package flowik.core
  * item[TodoItem::done].value = true        // fine-grained reactive update
  * ```
  */
-class Observables<T : Any>(initial: List<T> = emptyList())
-    : ObservableItems<Observable<T>>() {
+class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<Observable<T>>(),
+    ReadWriteProperty<Any?, MutableList<T>> {
 
     init {
         initial.forEach { super.add(Observable(it)) }
@@ -44,5 +47,50 @@ class Observables<T : Any>(initial: List<T> = emptyList())
     fun setAll(items: List<T>) = action {
         clear()
         items.forEach { super.add(Observable(it)) }
+    }
+
+    /**
+     * A [MutableList] view that delegates mutating operations back to this
+     * [Observables] instance, keeping reactive tracking intact.
+     */
+    private val delegate: MutableList<T> by lazy { DelegateList() }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun getValue(thisRef: Any?, property: KProperty<*>): MutableList<T> {
+        return delegate
+    }
+
+    override fun setValue(thisRef: Any?, property: KProperty<*>, value: MutableList<T>) {
+        setAll(value)
+    }
+
+    /**
+     * Mutable list implementation that delegates add/remove/clear/size and
+     * other read operations to the owning [Observables] instance.
+     */
+    private inner class DelegateList : AbstractMutableList<T>() {
+        override val size: Int
+            get() = this@Observables.size
+
+        override fun get(index: Int): T = this@Observables[index].value
+
+        override fun add(index: Int, element: T) {
+            this@Observables.add(index, element)
+        }
+
+        override fun removeAt(index: Int): T {
+            val removed = this@Observables.removeAt(index)
+            return removed.value
+        }
+
+        override fun set(index: Int, element: T): T {
+            val old = this@Observables[index].value
+            this@Observables[index] = Observable(element)
+            return old
+        }
+
+        override fun clear() {
+            this@Observables.clear()
+        }
     }
 }

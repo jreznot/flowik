@@ -4,6 +4,8 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import kotlin.reflect.KProperty0
+import kotlin.reflect.jvm.isAccessible
 
 // Each overload is more specific than the generic fallback below, so Kotlin's
 // overload resolution will always route these types here.  The name parameter
@@ -75,4 +77,11 @@ inline fun <R> action(block: () -> R): R {
     } finally {
         Tracking.endBatch()
     }
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T> unwrapBinding(prop: KProperty0<T>): ObservableValue<T> {
+    prop.isAccessible = true
+    val delegate = prop.getDelegate() ?: throw IllegalArgumentException("Property must have a delegate")
+    return delegate as ObservableValue<T>
 }

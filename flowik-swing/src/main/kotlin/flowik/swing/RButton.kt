@@ -32,4 +32,4 @@ class RButton(
 }
 
 fun PanelScope.Button(label: String, onClick: () -> Unit): RButton =
-    flowik.swing.RButton(label, onClick).also { panel.add(it) }
+    RButton(label, onClick).also { panel.add(it) }

@@ -1,13 +1,13 @@
 package demo
 
 import com.formdev.flatlaf.FlatLightLaf
+import flowik.core.*
+import flowik.layout.uiFrame
+import flowik.swing.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.withContext
-import flowik.core.*
-import flowik.layout.uiFrame
-import flowik.swing.*
 import java.awt.Font
 import javax.swing.SwingUtilities
 
@@ -25,24 +25,24 @@ private val CATALOGUE = listOf(
 )
 
 class PlanetStore {
-    val query    = observable("", name = "query")
-    val results  = observables<Planet>()
-    val progress = observable(0,  name = "progress")
-    val errorMsg = observable("", name = "errorMsg")
+    val query    by observable("", name = "query")
+    var progress by observable(0,  name = "progress")
+    var errorMsg by observable("", name = "errorMsg")
 
-    // Display list — unboxed mapValues; recomputes whenever results change.
+    val results  = observables<Planet>()
+    // Display list — recomputes whenever results change
     val displayItems: Computed<List<String>> = results.mapValues { p ->
         "%-10s  %5.2f AU   %d moon%s".format(p.name, p.distanceAu, p.moons, if (p.moons == 1) "" else "s")
     }
 
     val statusText: Computed<String> = computed {
         when {
-            fetch.isRunning.value && progress.value == 0 ->
+            fetch.isRunning.value && progress == 0 ->
                 "Connecting to solar catalogue…"
             fetch.isRunning.value ->
-                "Fetching — ${progress.value}% complete"
-            errorMsg.value.isNotEmpty() ->
-                "Error: ${errorMsg.value}"
+                "Fetching — ${progress}% complete"
+            errorMsg.isNotEmpty() ->
+                "Error: $errorMsg"
             results.size > 0 ->
                 "${results.size} planet(s) found"
             else ->
@@ -61,13 +61,13 @@ class PlanetStore {
      * the previous operation before starting a new one ([FlowAction] semantics).
      */
     val fetch = flowAction {
-        val q = query.value.trim().lowercase()
+        val q = query.trim().lowercase()
 
         // 1. Reset state before leaving the EDT
         runInAction {
             results.clear()
-            progress.value = 0
-            errorMsg.value = ""
+            progress = 0
+            errorMsg = ""
         }
 
         try {
@@ -85,20 +85,20 @@ class PlanetStore {
             withContext(Dispatchers.IO) { Thread.sleep(600) }
             runInAction {
                 first.forEach { results.add(it) }
-                progress.value = 50
+                progress = 50
             }
 
             // 4. Second page
             withContext(Dispatchers.IO) { Thread.sleep(600) }
             runInAction {
                 second.forEach { results.add(it) }
-                progress.value = 100
+                progress = 100
             }
 
         } catch (e: CancellationException) {
             throw e  // always re-throw so coroutine machinery can clean up
         } catch (e: Exception) {
-            runInAction { errorMsg.value = e.message ?: "Unknown error" }
+            runInAction { errorMsg = e.message ?: "Unknown error" }
         }
     }
 }
@@ -127,10 +127,9 @@ fun dataStoreAsyncDemo() {
                     north {
                         vbox(gap = 4) {
 
-                            // Search row ──────────────────────────────────────
                             hbox(gap = 6) {
                                 Label("Query:")
-                                TextField(store.query, columns = 18)
+                                TextField(store::query, columns = 18)
                                 spacer(width = 4)
 
                                 // Re-invoking while running cancels the previous fetch automatically.
@@ -147,12 +146,10 @@ fun dataStoreAsyncDemo() {
                                 }
                             }
 
-                            // Progress bar — hidden when idle ─────────────────
                             rpanel(visible = store.fetch.isRunning) {
-                                progressBar(store.progress)
+                                progressBar(store::progress)
                             }
 
-                            // Status line ─────────────────────────────────────
                             Label(store.statusText)
 
                             separator()
