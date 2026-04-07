@@ -1,0 +1,35 @@
+package flowik.swing
+
+import flowik.core.action
+import flowik.layout.PanelScope
+import javax.swing.JButton
+
+/**
+ * A reactive button. The click handler runs inside an [action] scope
+ * so multiple observable writes are batched.
+ */
+class RButton(
+    label: String,
+    private val onClick: () -> Unit
+) : JButton(label), RComponent {
+
+    init {
+        addActionListener {
+            action { onClick() }
+        }
+    }
+
+    fun bindEnabled(provider: () -> Boolean) {
+        autoReaction("RButton.enabled") {
+            isEnabled = provider()
+        }
+    }
+
+    override fun removeNotify() {
+        super<JButton>.removeNotify()
+        super<RComponent>.removeNotify()
+    }
+}
+
+fun PanelScope.Button(label: String, onClick: () -> Unit): RButton =
+    flowik.swing.RButton(label, onClick).also { panel.add(it) }
