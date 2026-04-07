@@ -174,3 +174,7 @@ fun dataStoreAsyncDemo() {
         }
     }
 }
+
+fun main() {
+    dataStoreAsyncDemo()
+}
