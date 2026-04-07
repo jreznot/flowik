@@ -12,43 +12,35 @@ import java.awt.event.KeyEvent
 import javax.swing.*
 
 class TodoStore {
-    val todos: ObservableObjectList<TodoItem> = ObservableObjectList()
-    val filter: ObservableValue<String> = observable("", name = "filter")
-    val showCompleted: ObservableValue<Boolean> = observable(true, name = "showCompleted")
-    val showFilter: ObservableValue<Boolean> = observable(false, name = "showFilter")
+    val todos = Observables<TodoItem>()
+    val filter = observable("", name = "filter")
+    val showCompleted = observable(true, name = "showCompleted")
+    val showFilter = observable(false, name = "showFilter")
 
-    val visibleItems: Derived<List<ObservableObject<TodoItem>>> = derived {
+    val visibleItems = todos.filter { item: Observable<TodoItem> ->
         val filterText = filter.value.lowercase()
-        todos.items.filter { item ->
-            (showCompleted.value || !item[TodoItem::done].value)
-                    && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
-        }
+        (showCompleted.value || !item[TodoItem::done].value)
+            && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
     }
 
-    val totalCount: Derived<Int> = derived { todos.size }
-    val doneCount: Derived<Int> = derived { todos.items.count { it[TodoItem::done].value } }
+    private val doneTodos = todos.filter { it[TodoItem::done].value }
 
-    val statusText: Derived<String> = derived {
-        "${doneCount.value} / ${totalCount.value} completed"
-    }
+    val totalCount = derived { todos.size }
+    val doneCount  = derived { doneTodos.value.size }
+    val statusText = derived { "${doneCount.value} / ${totalCount.value} completed" }
 
     fun addItem(text: String) = action {
-        if (text.isNotBlank()) {
-            todos.add(TodoItem(text.trim()))
-        }
+        if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
     }
 
-    fun removeItem(item: ObservableObject<TodoItem>) = action {
-        todos.remove(item)
-    }
+    fun removeItem(item: Observable<TodoItem>) = action { todos.remove(item) }
 
-    fun toggleItem(item: ObservableObject<TodoItem>) = action {
+    fun toggleItem(item: Observable<TodoItem>) = action {
         item[TodoItem::done].value = !item[TodoItem::done].value
     }
 
     fun clearCompleted() = action {
-        val completed = todos.items.filter { it[TodoItem::done].value }
-        completed.forEach { todos.remove(it) }
+        doneTodos.value.forEach { todos.remove(it) }
     }
 }
 
@@ -59,8 +51,8 @@ data class TodoItem(val text: String, val done: Boolean = false)
  * Arrow keys navigate, Space toggles done, Delete/Backspace removes.
  */
 private fun todoListPanel(store: TodoStore): JScrollPane {
-    val listModel = DefaultListModel<ObservableObject<TodoItem>>()
-    val jList = JList<ObservableObject<TodoItem>>(listModel).apply {
+    val listModel = DefaultListModel<Observable<TodoItem>>()
+    val jList = JList(listModel).apply {
         cellRenderer = TodoCellRenderer()
         selectionMode = ListSelectionModel.SINGLE_SELECTION
     }
@@ -134,7 +126,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
 }
 
 /** Renders a to-do row: [✓] text [✕] */
-private class TodoCellRenderer : ListCellRenderer<ObservableObject<TodoItem>> {
+private class TodoCellRenderer : ListCellRenderer<Observable<TodoItem>> {
     private val panel = JPanel(BorderLayout(6, 0)).apply {
         border = BorderFactory.createEmptyBorder(2, 4, 2, 4)
     }
@@ -152,8 +144,8 @@ private class TodoCellRenderer : ListCellRenderer<ObservableObject<TodoItem>> {
     }
 
     override fun getListCellRendererComponent(
-        list: JList<out ObservableObject<TodoItem>>,
-        value: ObservableObject<TodoItem>,
+        list: JList<out Observable<TodoItem>>,
+        value: Observable<TodoItem>,
         index: Int,
         isSelected: Boolean,
         cellHasFocus: Boolean

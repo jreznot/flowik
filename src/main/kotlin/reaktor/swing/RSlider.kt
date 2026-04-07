@@ -5,18 +5,12 @@ import reaktor.core.action
 import reaktor.layout.PanelScope
 import javax.swing.JSlider
 
-/**
- * A reactive slider with two-way binding to an observable Int.
- */
-class RSlider(
-    private val model: ObservableValue<Int>,
-    min: Int = 0,
-    max: Int = 100
-) : JSlider(min, max), RComponent {
+/** A reactive slider with two-way binding to an observable Int. */
+class RSlider(min: Int = 0, max: Int = 100) : JSlider(min, max), RComponent {
 
     private var updating = false
 
-    init {
+    fun bindValue(model: ObservableValue<Int>) {
         autoReaction("RSlider.sync") {
             val current = model.value
             if (value != current) {
@@ -25,11 +19,8 @@ class RSlider(
                 updating = false
             }
         }
-
         addChangeListener {
-            if (!updating && !valueIsAdjusting) {
-                action { model.value = value }
-            }
+            if (!updating && !valueIsAdjusting) action { model.value = value }
         }
     }
 
@@ -40,4 +31,4 @@ class RSlider(
 }
 
 fun PanelScope.Slider(model: ObservableValue<Int>, min: Int = 0, max: Int = 100): RSlider =
-    RSlider(model, min, max).also { panel.add(it) }
+    RSlider(min, max).also { it.bindValue(model); panel.add(it) }

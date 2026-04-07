@@ -9,30 +9,18 @@ import javax.swing.JPanel
 
 /**
  * A reactive JPanel that displays a single child component whose identity is
- * determined by mapping an observed value through [map].
+ * determined by mapping an observed value through a mapping function.
  *
- * Whenever the observed value changes the old child is removed and the new one
- * (produced by [map]) is added in its place.  The reaction is tied to the
- * component lifecycle and is disposed automatically when the panel is removed
- * from the hierarchy.
- *
- * @param observe Lambda that reads any reactive source (ObservableValue, Derived,
- *                or arbitrary computed expression).
- * @param map     Produces the [JComponent] to display for the current value.
+ * Call [bind] to connect the observable source and the mapping function.
+ * Whenever the value changes the old child is removed and a new one is added.
  */
-class RSwitch<T>(
-    observe: () -> T,
-    map: (T) -> JComponent
-) : JPanel(), RComponent {
+class RSwitch<T> : JPanel(), RComponent {
 
-    init {
-        layout = BorderLayout()
+    init { layout = BorderLayout() }
 
-        // Sentinel avoids a needless map() call on first run vs. "previous value
-        // was null" ambiguity when T is nullable.
+    fun bind(observe: () -> T, map: (T) -> JComponent) {
         var lastValue: Any? = Unset
         var currentChild: JComponent? = null
-
         autoReaction("RSwitch") {
             val value = observe()
             if (value != lastValue) {
@@ -47,6 +35,12 @@ class RSwitch<T>(
         }
     }
 
+    fun bind(observable: ObservableValue<T>, map: (T) -> JComponent) =
+        bind({ observable.value }, map)
+
+    fun bind(derived: Derived<T>, map: (T) -> JComponent) =
+        bind({ derived.value }, map)
+
     override fun removeNotify() {
         super<JPanel>.removeNotify()
         super<RComponent>.removeNotify()
@@ -55,41 +49,17 @@ class RSwitch<T>(
 
 private object Unset
 
-// ---------------------------------------------------------------------------
-// DSL builders
-// ---------------------------------------------------------------------------
-
-/**
- * Adds an [RSwitch] driven by an [ObservableValue].
- *
- * Example:
- * ```kotlin
- * rswitch(store.currentPage) { page ->
- *     when (page) {
- *         Page.HOME     -> HomePanel()
- *         Page.SETTINGS -> SettingsPanel()
- *     }
- * }
- * ```
- */
 fun <T> PanelScope.Switch(
     observable: ObservableValue<T>,
     map: (T) -> JComponent
-): RSwitch<T> = RSwitch({ observable.value }, map).also { panel.add(it) }
+): RSwitch<T> = RSwitch<T>().also { it.bind(observable, map); panel.add(it) }
 
-/**
- * Adds an [RSwitch] driven by a [Derived] value.
- */
 fun <T> PanelScope.Switch(
     derived: Derived<T>,
     map: (T) -> JComponent
-): RSwitch<T> = RSwitch({ derived.value }, map).also { panel.add(it) }
+): RSwitch<T> = RSwitch<T>().also { it.bind(derived, map); panel.add(it) }
 
-/**
- * Adds an [RSwitch] driven by an arbitrary reactive lambda.
- * Any observables read inside [observe] are tracked automatically.
- */
 fun <T> PanelScope.Switch(
     observe: () -> T,
     map: (T) -> JComponent
-): RSwitch<T> = RSwitch(observe, map).also { panel.add(it) }
+): RSwitch<T> = RSwitch<T>().also { it.bind(observe, map); panel.add(it) }

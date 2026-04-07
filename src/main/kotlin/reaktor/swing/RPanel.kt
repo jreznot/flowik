@@ -7,27 +7,22 @@ import javax.swing.BoxLayout
 import javax.swing.JPanel
 
 /**
- * A reactive panel whose visibility can be bound to an [ObservableValue].
- *
- * When the observed boolean changes, the panel automatically shows or hides
- * itself and asks its parent to re-layout.
+ * A reactive panel whose visibility can be bound to an [ObservableValue]
+ * via [bindVisible].
  */
-class RPanel(
-    layout: LayoutManager? = null,
-    private val visible: ObservableValue<Boolean>? = null
-) : JPanel(), RComponent {
+class RPanel(layout: LayoutManager? = null) : JPanel(), RComponent {
 
     init {
         this.layout = layout ?: BoxLayout(this, BoxLayout.Y_AXIS)
+    }
 
-        visible?.let { vis ->
-            autoReaction("RPanel.visibility") {
-                val shouldBeVisible = vis.value
-                if (isVisible != shouldBeVisible) {
-                    isVisible = shouldBeVisible
-                    parent?.revalidate()
-                    parent?.repaint()
-                }
+    fun bindVisible(visible: ObservableValue<Boolean>) {
+        autoReaction("RPanel.visibility") {
+            val shouldBeVisible = visible.value
+            if (isVisible != shouldBeVisible) {
+                isVisible = shouldBeVisible
+                parent?.revalidate()
+                parent?.repaint()
             }
         }
     }
@@ -43,7 +38,8 @@ fun PanelScope.rpanel(
     layout: LayoutManager? = null,
     init: PanelScope.() -> Unit
 ): RPanel {
-    val child = RPanel(layout, visible)
+    val child = RPanel(layout)
+    child.bindVisible(visible)
     PanelScope(child).init()
     panel.add(child)
     return child

@@ -14,20 +14,16 @@ import javax.swing.event.DocumentListener
  * - When the observable changes programmatically, the text field updates.
  * - When the user types, the observable updates (inside an action).
  */
-class RTextField(
-    private val model: ObservableValue<String>,
-    columns: Int = 20
-) : JTextField(columns), RComponent {
+class RTextField(columns: Int = 20) : JTextField(columns), RComponent {
 
     override fun getMaximumSize(): Dimension {
         val pref = preferredSize
         return Dimension(super.getMaximumSize().width, pref.height)
     }
 
-    private var updating = false  // guard against feedback loops
+    private var updating = false
 
-    init {
-        // Observable → Swing
+    fun bindValue(model: ObservableValue<String>) {
         autoReaction("RTextField.sync") {
             val current = model.value
             if (text != current) {
@@ -36,17 +32,12 @@ class RTextField(
                 updating = false
             }
         }
-
-        // Swing → Observable
         document.addDocumentListener(object : DocumentListener {
             override fun insertUpdate(e: DocumentEvent) = sync()
             override fun removeUpdate(e: DocumentEvent) = sync()
             override fun changedUpdate(e: DocumentEvent) = sync()
-
             private fun sync() {
-                if (!updating) {
-                    action { model.value = text }
-                }
+                if (!updating) action { model.value = text }
             }
         })
     }
@@ -58,4 +49,4 @@ class RTextField(
 }
 
 fun PanelScope.TextField(model: ObservableValue<String>, columns: Int = 20): RTextField =
-    reaktor.swing.RTextField(model, columns).also { panel.add(it) }
+    RTextField(columns).also { it.bindValue(model); panel.add(it) }

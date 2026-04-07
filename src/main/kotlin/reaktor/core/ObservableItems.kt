@@ -5,7 +5,7 @@ package reaktor.core
  * with the auto-tracking system. Any reaction that reads [items], [size],
  * or iterates the list will re-run when the list is mutated.
  */
-open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T> {
+open class ObservableItems<T>(initial: List<T> = emptyList()) : Iterable<T> {
 
     /** Internal version counter — observing this is how reactions track "the list changed". */
     private val version = ObservableValue(0L, name = "list-version")
@@ -106,7 +106,7 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T> {
     }
 }
 
-/** Fine-grained change events for [ObservableList]. */
+/** Fine-grained change events for [ObservableItems]. */
 sealed class ListChange<T> {
     data class Insert<T>(val index: Int, val item: T) : ListChange<T>()
     data class Remove<T>(val index: Int, val item: T) : ListChange<T>()

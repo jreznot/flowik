@@ -1,6 +1,6 @@
 package reaktor.swing
 
-import reaktor.core.ObservableList
+import reaktor.core.ObservableItems
 import reaktor.core.ObservableValue
 import reaktor.core.action
 import reaktor.layout.PanelScope
@@ -8,29 +8,25 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
 
 /**
- * A reactive combo box bound to an [ObservableList] of items and an
- * [ObservableValue] for the current selection.
+ * A reactive combo box.
+ *
+ * Call [bind] to wire both the item list and the selected-item observable.
+ * Items and selection are bound together because the items reaction must
+ * restore the selection after rebuilding the combo model.
  */
-class RComboBox<T>(
-    private val items: ObservableList<T>,
-    private val selection: ObservableValue<T?>
-) : JComboBox<Any?>(), RComponent {
+class RComboBox<T> : JComboBox<Any?>(), RComponent {
 
     private var updating = false
 
-    init {
-        // Sync items
+    fun bind(items: ObservableItems<T>, selection: ObservableValue<T?>) {
         autoReaction("RComboBox.items") {
             updating = true
             val cbModel = DefaultComboBoxModel<Any?>()
             items.items.forEach { cbModel.addElement(it) }
             model = cbModel
-            // Restore selection
             selectedItem = selection.value
             updating = false
         }
-
-        // Sync selection from observable → swing
         autoReaction("RComboBox.selection") {
             val current = selection.value
             if (selectedItem != current) {
@@ -39,8 +35,6 @@ class RComboBox<T>(
                 updating = false
             }
         }
-
-        // Swing → observable
         addActionListener {
             if (!updating) {
                 @Suppress("UNCHECKED_CAST")
@@ -55,5 +49,5 @@ class RComboBox<T>(
     }
 }
 
-fun <T> PanelScope.ComboBox(items: ObservableList<T>, selection: ObservableValue<T?>): RComboBox<T> =
-    RComboBox(items, selection).also { panel.add(it) }
+fun <T> PanelScope.ComboBox(items: ObservableItems<T>, selection: ObservableValue<T?>): RComboBox<T> =
+    RComboBox<T>().also { it.bind(items, selection); panel.add(it) }

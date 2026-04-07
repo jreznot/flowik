@@ -1,7 +1,7 @@
 package reaktor.swing
 
 import reaktor.core.ListChange
-import reaktor.core.ObservableList
+import reaktor.core.ObservableItems
 import reaktor.layout.PanelScope
 import java.awt.LayoutManager
 import javax.swing.BoxLayout
@@ -9,42 +9,28 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * A reactive JPanel whose children are kept in sync with an [ObservableList]
+ * A reactive JPanel whose children are kept in sync with an [ObservableItems]
  * via a mapping function.
  *
+ * Call [bindItems] to connect the list and supply the mapping function.
  * Children are created, inserted, replaced, and removed using fine-grained
  * [ListChange] events — no full rebuild occurs on incremental mutations.
- *
- * @param list   The observable list to mirror as children.
- * @param layout Panel layout manager; defaults to vertical [BoxLayout].
- * @param map    Produces a [JComponent] for each list item.
  */
-class RForEach<T>(
-    list: ObservableList<T>,
-    layout: LayoutManager? = null,
-    private val map: (T) -> JComponent
-) : JPanel(), RComponent {
+class RForEach<T>(layout: LayoutManager? = null) : JPanel(), RComponent {
 
-    /** Parallel list of child components, kept in sync with [list]. */
     private val children = mutableListOf<JComponent>()
-
-    /**
-     * Set to true in [removeNotify] so that any in-flight [ObservableList.onChange]
-     * callbacks are ignored after the panel is removed from the hierarchy.
-     */
     private var disposed = false
 
     init {
         this.layout = layout ?: BoxLayout(this, BoxLayout.Y_AXIS)
+    }
 
-        // Bootstrap from current contents
+    fun bindItems(list: ObservableItems<T>, map: (T) -> JComponent) {
         for (item in list.items) {
             val comp = map(item)
             children.add(comp)
             add(comp)
         }
-
-        // Fine-grained incremental updates
         list.onChange { change ->
             if (disposed) return@onChange
             when (change) {
@@ -83,18 +69,8 @@ class RForEach<T>(
     }
 }
 
-/**
- * DSL builder — adds an [RForEach] panel to the receiver scope.
- *
- * Example:
- * ```kotlin
- * rforEach(store.items) { item ->
- *     RLabel.of(item.name)
- * }
- * ```
- */
 fun <T> PanelScope.ForEach(
-    list: ObservableList<T>,
+    list: ObservableItems<T>,
     layout: LayoutManager? = null,
     map: (T) -> JComponent
-): RForEach<T> = RForEach(list, layout, map).also { panel.add(it) }
+): RForEach<T> = RForEach<T>(layout).also { it.bindItems(list, map); panel.add(it) }

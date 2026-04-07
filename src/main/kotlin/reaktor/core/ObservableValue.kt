@@ -13,12 +13,12 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
 
     private var _value: T = initial
 
-    /** All reactions / computeds that depend on this observable. */
+    /** All reactions / derived that depend on this observable. */
     private val observers = linkedSetOf<Tracker>()
 
     var value: T
         get() {
-            // Register with the currently-tracking reaction/computed
+            // Register with the currently tracking reaction/computed
             Tracking.current?.addDependency(this)
             return _value
         }
@@ -32,14 +32,10 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
     /** Read the current value without registering any tracking dependency. */
     internal val untrackedValue: T get() = _value
 
-    // ── Property delegate support ────────────────────────────────────
-
     override fun getValue(thisRef: Any?, property: KProperty<*>): T = value
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
         this.value = value
     }
-
-    // ── Observer management ──────────────────────────────────────────
 
     fun addObserver(tracker: Tracker) {
         observers.add(tracker)
