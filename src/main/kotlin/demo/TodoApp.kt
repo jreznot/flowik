@@ -175,7 +175,7 @@ private class TodoCellRenderer : ListCellRenderer<Observable<TodoItem>> {
     }
 }
 
-fun main() {
+fun todoDemo() {
     SwingUtilities.invokeLater {
         FlatLightLaf.setup()
 
@@ -244,4 +244,9 @@ fun main() {
             }
         }
     }
+}
+
+fun main() {
+    todoDemo()
+    // dataStoreAsyncDemo()
 }
