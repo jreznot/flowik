@@ -7,7 +7,7 @@ package flowik.core
 //
 // Any observable read inside a transform / predicate lambda is auto-tracked,
 // meaning the derived updates when list contents change OR when an observed
-// property of an element changes (e.g. item[Foo::bar].value inside a filter).
+// property of an element changes (e.g., item[Foo::bar].value inside a filter).
 
 /**
  * Returns a [Computed] list where each element has been transformed by [transform].
@@ -63,7 +63,7 @@ fun <T, R> Computed<List<T>>.flatMap(transform: (T) -> Iterable<R>): Computed<Li
 // Computed<List<R>>, Kotlin cannot pick the right overload even with an explicit
 // lambda parameter type annotation.
 //
-// filterValues returns Computed<List<Observable<T>>> so callers can still reach
+// filterValues returns Computed<List<ObservableMap<T>>> so callers can still reach
 // reactive properties on the results (item[Foo::bar].value in the UI layer).
 //
 // These are list-reactive only — the derived re-evaluates when items are added
@@ -71,8 +71,8 @@ fun <T, R> Computed<List<T>>.flatMap(transform: (T) -> Iterable<R>): Computed<Li
 // For property-reactive predicates use the ObservableItems overload and read
 // item[Prop::name].value inside the lambda.
 
-/** Returns a [Computed] list of [Observable] wrappers whose unboxed value satisfies [predicate]. */
-fun <T : Any> Observables<T>.filterValues(predicate: (T) -> Boolean): Computed<List<Observable<T>>> =
+/** Returns a [Computed] list of [ObservableMap] wrappers whose unboxed value satisfies [predicate]. */
+fun <T : Any> Observables<T>.filterValues(predicate: (T) -> Boolean): Computed<List<ObservableMap<T>>> =
     computed { items.filter { predicate(it.value) } }
 
 /** Returns a [Computed] list where each unboxed element has been transformed by [transform]. */

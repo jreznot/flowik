@@ -16,7 +16,7 @@ import kotlin.reflect.full.memberProperties
  * ```kotlin
  * data class Team(val name: String, val members: List<String>)
  *
- * val team = Observable(Team("A-Team", listOf("Alice", "Bob")))
+ * val team = ObservableMap(Team("A-Team", listOf("Alice", "Bob")))
  *
  * // Type-safe — compiler picks the right overload automatically
  * val name:    ObservableValue<String>  = team[Team::name]
@@ -27,10 +27,10 @@ import kotlin.reflect.full.memberProperties
  * val members2: ObservableItems<String>  = team.list("members")
  * ```
  */
-class Observable<T : Any>(private val initial: T) {
+class ObservableMap<T : Any>(private val initial: T) {
 
     /**
-     * The wrapped value as originally passed to [Observable].
+     * The wrapped value as originally passed to [ObservableMap].
      *
      * Note: this reflects the *initial* state of [T], not any property
      * mutations made via [get].  Use it for list-level map / filter / flatMap
@@ -88,16 +88,16 @@ class Observable<T : Any>(private val initial: T) {
     }
 
     /**
-     * Two [Observable] instances are equal when their wrapped [initial]
+     * Two [ObservableMap] instances are equal when their wrapped [initial]
      * values are equal. This allows [Observables.remove] to locate a
      * wrapper by its original data value.
      */
     override fun equals(other: Any?): Boolean =
-        other is Observable<*> && initial == other.initial
+        other is ObservableMap<*> && initial == other.initial
 
     override fun hashCode(): Int = initial.hashCode()
 
-    override fun toString(): String = "Observable($initial)"
+    override fun toString(): String = "ObservableMap($initial)"
 
     /**
      * Returns the [ObservableItems] for the list property named [name].

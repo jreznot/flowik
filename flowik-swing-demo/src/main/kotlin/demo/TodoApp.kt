@@ -17,7 +17,7 @@ class TodoStore {
     val showCompleted = observable(true, name = "showCompleted")
     val showFilter = observable(false, name = "showFilter")
 
-    val visibleItems = todos.filter { item: Observable<TodoItem> ->
+    val visibleItems = todos.filter { item: ObservableMap<TodoItem> ->
         val filterText = filter.value.lowercase()
         (showCompleted.value || !item[TodoItem::done].value)
             && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
@@ -33,9 +33,9 @@ class TodoStore {
         if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
     }
 
-    fun removeItem(item: Observable<TodoItem>) = action { todos.remove(item) }
+    fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
 
-    fun toggleItem(item: Observable<TodoItem>) = action {
+    fun toggleItem(item: ObservableMap<TodoItem>) = action {
         item[TodoItem::done].value = !item[TodoItem::done].value
     }
 
@@ -51,7 +51,7 @@ data class TodoItem(val text: String, val done: Boolean = false)
  * Arrow keys navigate, Space toggles done, Delete/Backspace removes.
  */
 private fun todoListPanel(store: TodoStore): JScrollPane {
-    val listModel = DefaultListModel<Observable<TodoItem>>()
+    val listModel = DefaultListModel<ObservableMap<TodoItem>>()
     val jList = JList(listModel).apply {
         cellRenderer = TodoCellRenderer()
         selectionMode = ListSelectionModel.SINGLE_SELECTION
@@ -126,7 +126,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
 }
 
 /** Renders a to-do row: [✓] text [✕] */
-private class TodoCellRenderer : ListCellRenderer<Observable<TodoItem>> {
+private class TodoCellRenderer : ListCellRenderer<ObservableMap<TodoItem>> {
     private val panel = JPanel(BorderLayout(6, 0)).apply {
         border = BorderFactory.createEmptyBorder(2, 4, 2, 4)
     }
@@ -144,8 +144,8 @@ private class TodoCellRenderer : ListCellRenderer<Observable<TodoItem>> {
     }
 
     override fun getListCellRendererComponent(
-        list: JList<out Observable<TodoItem>>,
-        value: Observable<TodoItem>,
+        list: JList<out ObservableMap<TodoItem>>,
+        value: ObservableMap<TodoItem>,
         index: Int,
         isSelected: Boolean,
         cellHasFocus: Boolean

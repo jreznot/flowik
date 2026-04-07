@@ -10,7 +10,7 @@ import javax.swing.SwingUtilities
 class Reaction(
     private val name: String? = null,
     private val effect: () -> Unit
-) : Tracker {
+) : Tracker, Disposable {
 
     private val dependencies = mutableSetOf<ObservableValue<*>>()
     private val computedDeps = mutableSetOf<Computed<*>>()
@@ -42,7 +42,7 @@ class Reaction(
     }
 
     /** Stop this reaction from ever running again. */
-    fun dispose() {
+    override fun dispose() {
         isDisposed = true
         for (it in dependencies) {
             it.removeObserver(this)

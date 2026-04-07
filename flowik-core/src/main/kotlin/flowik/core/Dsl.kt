@@ -27,14 +27,14 @@ fun observable(initial: LocalDateTime, name: String? = null): ObservableValue<Lo
     ObservableValue(initial, name)
 
 // Any type not matched by the overloads above (data classes, domain objects,
-// etc.) is wrapped in an Observable, exposing each property as an
+// etc.) is wrapped in an ObservableMap, exposing each property as an
 // individual ObservableValue.
 
 /** Wrap an arbitrary [T] instance, exposing each property as an [ObservableValue]. */
-fun <T : Any> observable(initial: T): Observable<T> = Observable(initial)
+fun <T : Any> observable(initial: T): ObservableMap<T> = ObservableMap(initial)
 
 /** Explicit alias — prefer [observable] for brevity. */
-fun <T : Any> observableObject(initial: T): Observable<T> = Observable(initial)
+fun <T : Any> observableMap(initial: T): ObservableMap<T> = ObservableMap(initial)
 
 /** Create an [Observables] pre-populated with [items]. */
 fun <T : Any> observables(vararg items: T): Observables<T> =

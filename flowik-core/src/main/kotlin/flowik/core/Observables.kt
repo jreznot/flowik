@@ -5,8 +5,8 @@ import kotlin.reflect.KProperty
 
 /**
  * An [ObservableItems] that automatically wraps each added [T] in an
- * [Observable], so callers work with plain data values while the list
- * stores and exposes reactive [Observable]<[T]> wrappers.
+ * [ObservableMap], so callers work with plain data values while the list
+ * stores and exposes reactive [ObservableMap]<[T]> wrappers.
  *
  * Example:
  * ```kotlin
@@ -15,38 +15,38 @@ import kotlin.reflect.KProperty
  * val todos = Observables<TodoItem>()
  * todos.add(TodoItem("Buy milk"))          // plain value, auto-wrapped
  *
- * val item: Observable<TodoItem> = todos[0]
+ * val item: ObservableMap<TodoItem> = todos[0]
  * item[TodoItem::done].value = true        // fine-grained reactive update
  * ```
  */
-class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<Observable<T>>(),
+class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<ObservableMap<T>>(),
     ReadWriteProperty<Any?, MutableList<T>> {
 
     init {
-        initial.forEach { super.add(Observable(it)) }
+        initial.forEach { super.add(ObservableMap(it)) }
     }
 
-    /** Wraps [item] in an [Observable] and appends it to the list. */
+    /** Wraps [item] in an [ObservableMap] and appends it to the list. */
     @JvmName("addItem")
-    fun add(item: T): Unit = super.add(Observable(item))
+    fun add(item: T): Unit = super.add(ObservableMap(item))
 
-    /** Wraps [item] in an [Observable] and inserts it at [index]. */
+    /** Wraps [item] in an [ObservableMap] and inserts it at [index]. */
     @JvmName("addItemAt")
-    fun add(index: Int, item: T): Unit = super.add(index, Observable(item))
+    fun add(index: Int, item: T): Unit = super.add(index, ObservableMap(item))
 
     /**
      * Removes the first wrapper whose initial value equals [item].
      *
-     * Relies on [Observable.equals], which compares by the wrapped
+     * Relies on [ObservableMap.equals], which compares by the wrapped
      * initial value, so the temporary sentinel wrapper is never stored.
      */
     @JvmName("removeItem")
-    fun remove(item: T): Boolean = super.remove(Observable(item))
+    fun remove(item: T): Boolean = super.remove(ObservableMap(item))
 
     @JvmName("setAllItems")
     fun setAll(items: List<T>) = action {
         clear()
-        items.forEach { super.add(Observable(it)) }
+        items.forEach { super.add(ObservableMap(it)) }
     }
 
     /**
@@ -85,7 +85,7 @@ class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<Obs
 
         override fun set(index: Int, element: T): T {
             val old = this@Observables[index].value
-            this@Observables[index] = Observable(element)
+            this@Observables[index] = ObservableMap(element)
             return old
         }
 
