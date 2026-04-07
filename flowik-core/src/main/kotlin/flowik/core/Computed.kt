@@ -35,6 +35,7 @@ class Computed<T>(private val compute: () -> T) : Tracker {
             observers.toList().forEach { tracker ->
                 when (tracker) {
                     is Reaction -> Tracking.schedule(tracker)
+                    is AutoRun -> Tracking.schedule(tracker)
                     is Computed<*> -> tracker.invalidate()
                 }
             }

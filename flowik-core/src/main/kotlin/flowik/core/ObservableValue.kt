@@ -50,6 +50,7 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
         observers.toList().forEach { tracker ->
             when (tracker) {
                 is Reaction -> Tracking.schedule(tracker)
+                is AutoRun -> Tracking.schedule(tracker)
                 is Computed<*> -> tracker.invalidate()
             }
         }

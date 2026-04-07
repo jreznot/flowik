@@ -52,6 +52,19 @@ fun reaction(name: String? = null, effect: () -> Unit): Reaction {
 }
 
 /**
+ * Create and immediately run an [AutoRun] — the core equivalent of MobX's
+ * `autorun`. The [effect] is executed synchronously on the current thread
+ * and re-runs whenever any observed dependency changes.
+ *
+ * Returns the [AutoRun] so it can be [disposed][AutoRun.dispose] later.
+ */
+fun autoRun(name: String? = null, effect: () -> Unit): AutoRun {
+    val ar = AutoRun(name, effect)
+    ar.run()
+    return ar
+}
+
+/**
  * Batch multiple observable writes so that reactions fire only once,
  * after the block completes.
  */
