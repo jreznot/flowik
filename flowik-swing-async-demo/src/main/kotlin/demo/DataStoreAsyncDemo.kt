@@ -6,7 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.withContext
 import flowik.core.*
-import flowik.layout.rframe
+import flowik.layout.uiFrame
 import flowik.swing.*
 import java.awt.Font
 import javax.swing.SwingUtilities
@@ -103,8 +103,6 @@ class PlanetStore {
     }
 }
 
-// ── UI ────────────────────────────────────────────────────────────────────────
-
 fun dataStoreAsyncDemo() {
     SwingUtilities.invokeLater {
         FlatLightLaf.setup()
@@ -112,9 +110,9 @@ fun dataStoreAsyncDemo() {
         val store    = PlanetStore()
         val appScope = MainScope()
 
-        rframe("Planet Explorer — Async Demo", width = 580, height = 500) {
+        uiFrame("Planet Explorer — Async Demo", width = 580, height = 500) {
             north {
-                rvbox(gap = 2) {
+                vbox(gap = 2) {
                     Label("Planet Explorer").apply {
                         font = Font("SansSerif", Font.BOLD, 20)
                     }
@@ -125,12 +123,12 @@ fun dataStoreAsyncDemo() {
             }
 
             center {
-                rborderPanel(gap = 6) {
+                borderPanel(gap = 6) {
                     north {
-                        rvbox(gap = 4) {
+                        vbox(gap = 4) {
 
                             // Search row ──────────────────────────────────────
-                            rhbox(gap = 6) {
+                            hbox(gap = 6) {
                                 Label("Query:")
                                 TextField(store.query, columns = 18)
                                 spacer(width = 4)

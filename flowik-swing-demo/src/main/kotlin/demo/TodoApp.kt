@@ -2,7 +2,7 @@ package demo
 
 import com.formdev.flatlaf.FlatLightLaf
 import flowik.core.*
-import flowik.layout.rframe
+import flowik.layout.uiFrame
 import flowik.swing.*
 import java.awt.BorderLayout
 import java.awt.Color
@@ -185,9 +185,9 @@ fun todoDemo() {
         store.addItem("Build Reaktor component library")
         store.addItem("Write unit tests")
 
-        rframe("Todo", width = 540, height = 520) {
+        uiFrame("Todo", width = 540, height = 520) {
             north {
-                rhbox(gap = 0) {
+                hbox(gap = 0) {
                     Label("Todo").apply {
                         font = Font("SansSerif", Font.BOLD, 22)
                         border = BorderFactory.createEmptyBorder(4, 0, 8, 0)
@@ -200,11 +200,11 @@ fun todoDemo() {
             }
 
             center {
-                rborderPanel(gap = 4) {
+                borderPanel(gap = 4) {
                     north {
-                        rvbox(gap = 4) {
+                        vbox(gap = 4) {
                             rpanel(visible = store.showFilter) {
-                                rhbox(gap = 6) {
+                                hbox(gap = 6) {
                                     Label("Filter:")
                                     TextField(store.filter, columns = 18)
                                     CheckBox(store.showCompleted, "Show completed")
@@ -220,7 +220,7 @@ fun todoDemo() {
                     }
 
                     south {
-                        rhbox(gap = 6) {
+                        hbox(gap = 6) {
                             Label("New todo:")
                             val input = observable("", name = "newItemInput")
                             val tf = TextField(input, columns = 28)
@@ -236,7 +236,7 @@ fun todoDemo() {
             }
 
             south {
-                rhbox(gap = 6) {
+                hbox(gap = 6) {
                     Label(store.statusText)
                     hglue()
                     Button("Clear completed") { store.clearCompleted() }

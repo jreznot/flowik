@@ -14,7 +14,7 @@ open class PanelScope(val panel: JPanel) {
         return component
     }
 
-    fun rhbox(gap: Int = 5, init: PanelScope.() -> Unit): JPanel {
+    fun hbox(gap: Int = 5, init: PanelScope.() -> Unit): JPanel {
         val child = object : JPanel() {
             override fun getMaximumSize(): Dimension {
                 val pref = preferredSize
@@ -29,7 +29,7 @@ open class PanelScope(val panel: JPanel) {
         return child
     }
 
-    fun rvbox(gap: Int = 5, init: PanelScope.() -> Unit): JPanel {
+    fun vbox(gap: Int = 5, init: PanelScope.() -> Unit): JPanel {
         val child = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             border = BorderFactory.createEmptyBorder(gap, gap, gap, gap)
@@ -39,7 +39,7 @@ open class PanelScope(val panel: JPanel) {
         return child
     }
 
-    fun rgrid(cols: Int, gap: Int = 5, init: PanelScope.() -> Unit): JPanel {
+    fun grid(cols: Int, gap: Int = 5, init: PanelScope.() -> Unit): JPanel {
         val child = JPanel(GridLayout(0, cols, gap, gap))
         PanelScope(child).init()
         panel.add(child)
@@ -53,7 +53,7 @@ open class PanelScope(val panel: JPanel) {
         return child
     }
 
-    fun rborderPanel(gap: Int = 5, init: BorderPanelScope.() -> Unit): JPanel {
+    fun borderPanel(gap: Int = 5, init: BorderPanelScope.() -> Unit): JPanel {
         val child = JPanel(BorderLayout(gap, gap))
         BorderPanelScope(child).init()
         panel.add(child)
@@ -81,7 +81,6 @@ open class PanelScope(val panel: JPanel) {
 
 @ReaktorDsl
 class BorderPanelScope(panel: JPanel) : PanelScope(panel) {
-
     fun north(init: PanelScope.() -> Unit) = region(BorderLayout.NORTH, init)
     fun south(init: PanelScope.() -> Unit) = region(BorderLayout.SOUTH, init)
     fun east(init: PanelScope.() -> Unit) = region(BorderLayout.EAST, init)
@@ -97,7 +96,7 @@ class BorderPanelScope(panel: JPanel) : PanelScope(panel) {
     }
 }
 
-fun rframe(
+fun uiFrame(
     title: String,
     width: Int = 600,
     height: Int = 400,
