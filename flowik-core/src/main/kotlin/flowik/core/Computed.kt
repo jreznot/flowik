@@ -7,13 +7,16 @@ package flowik.core
  * A [Computed] is both a [Tracker] (it observes other observables)
  * and behaves like an observable (reactions can depend on it).
  */
-class Computed<T>(private val compute: () -> T) : Tracker {
+class Computed<T>(private val compute: () -> T) : Tracker, Observable {
 
     private var cachedValue: T? = null
     private var isDirty = true
     private val dependencies = mutableSetOf<ObservableValue<*>>()
 
     private val observers = linkedSetOf<Tracker>()
+
+    /** External subscribers registered via [subscribe]. */
+    private val subscribers = mutableListOf<Observer>()
 
     val value: T
         get() {
@@ -36,8 +39,12 @@ class Computed<T>(private val compute: () -> T) : Tracker {
                 when (tracker) {
                     is Reaction -> Tracking.schedule(tracker)
                     is AutoRun -> Tracking.schedule(tracker)
+                    is When -> Tracking.schedule(tracker)
                     is Computed<*> -> tracker.invalidate()
                 }
+            }
+            for (it in subscribers.toList()) {
+                it.onChange()
             }
         }
     }
@@ -69,5 +76,14 @@ class Computed<T>(private val compute: () -> T) : Tracker {
 
     fun removeObserver(tracker: Tracker) {
         observers.remove(tracker)
+    }
+
+    override fun subscribe(observer: Observer): Disposable {
+        subscribers.add(observer)
+        return object : Disposable {
+            override fun dispose() {
+                subscribers.remove(observer)
+            }
+        }
     }
 }

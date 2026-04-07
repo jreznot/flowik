@@ -67,6 +67,23 @@ fun autoRun(name: String? = null, effect: () -> Unit): AutoRun {
 }
 
 /**
+ * Create and immediately evaluate a [When] — the core equivalent of MobX's
+ * `when`.  The [predicate] is evaluated reactively; as soon as it returns
+ * `true`, the [effect] is executed **once** and the reaction auto-disposes.
+ *
+ * If the predicate is already `true` on the first evaluation, the effect
+ * fires immediately.
+ *
+ * Returns the [When] (a [Disposable]) so callers can cancel the reaction
+ * before the predicate ever becomes `true`.
+ */
+fun whenThen(predicate: () -> Boolean, name: String? = null, effect: () -> Unit): When {
+    val w = When(name, predicate, effect)
+    w.run()
+    return w
+}
+
+/**
  * Batch multiple observable writes so that reactions fire only once,
  * after the block completes.
  */

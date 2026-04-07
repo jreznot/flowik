@@ -27,7 +27,7 @@ import kotlin.reflect.full.memberProperties
  * val members2: ObservableItems<String>  = team.list("members")
  * ```
  */
-class ObservableMap<T : Any>(private val initial: T) {
+class ObservableMap<T : Any>(private val initial: T) : Observable {
 
     /**
      * The wrapped value as originally passed to [ObservableMap].
@@ -43,6 +43,12 @@ class ObservableMap<T : Any>(private val initial: T) {
     // Holds ObservableValue<Any?> for scalars, ObservableItems<Any?> for lists.
     private val store = mutableMapOf<String, Any>()
 
+    /** External subscribers registered via [subscribe]. */
+    private val subscribers = mutableListOf<Observer>()
+
+    /** Disposables for internal subscriptions to child observables. */
+    private val childSubscriptions = mutableMapOf<String, Disposable>()
+
     /**
      * Returns the [ObservableValue] for a scalar property.
      *
@@ -50,10 +56,13 @@ class ObservableMap<T : Any>(private val initial: T) {
      * the property type is [List], so this overload is never called for lists.
      */
     @Suppress("UNCHECKED_CAST")
-    operator fun <P> get(prop: KProperty1<T, P>): ObservableValue<P> =
-        store.getOrPut(prop.name) {
+    operator fun <P> get(prop: KProperty1<T, P>): ObservableValue<P> {
+        val obs = store.getOrPut(prop.name) {
             ObservableValue(prop.get(initial), name = prop.name)
         } as ObservableValue<P>
+        subscribeToChild(prop.name, obs)
+        return obs
+    }
 
     /**
      * Returns the [ObservableItems] for a list property.
@@ -63,10 +72,13 @@ class ObservableMap<T : Any>(private val initial: T) {
      * `KProperty1<T, List<P>>`.
      */
     @Suppress("UNCHECKED_CAST")
-    operator fun <P> get(prop: KProperty1<T, List<P>>): ObservableItems<P> =
-        store.getOrPut(prop.name) {
+    operator fun <P> get(prop: KProperty1<T, List<P>>): ObservableItems<P> {
+        val obs = store.getOrPut(prop.name) {
             ObservableItems(prop.get(initial))
         } as ObservableItems<P>
+        subscribeToChild(prop.name, obs)
+        return obs
+    }
 
     /**
      * Returns the [ObservableValue] for the scalar property named [name].
@@ -80,11 +92,13 @@ class ObservableMap<T : Any>(private val initial: T) {
         check(existing !is ObservableItems<*>) {
             "Property '$name' is a List — use list(\"$name\") to get its ObservableItems"
         }
-        return store.getOrPut(name) {
+        val obs = store.getOrPut(name) {
             val prop = initial::class.memberProperties.find { it.name == name }
                 ?: throw NoSuchElementException("No property '$name' on ${initial::class.simpleName}")
             ObservableValue(prop.getter.call(initial), name = name)
         } as ObservableValue<P>
+        subscribeToChild(name, obs)
+        return obs
     }
 
     /**
@@ -113,7 +127,7 @@ class ObservableMap<T : Any>(private val initial: T) {
         check(existing !is ObservableValue<*>) {
             "Property '$name' was already accessed as a scalar ObservableValue — access pattern must be consistent"
         }
-        return store.getOrPut(name) {
+        val obs = store.getOrPut(name) {
             val prop = initial::class.memberProperties.find { it.name == name }
                 ?: throw NoSuchElementException("No property '$name' on ${initial::class.simpleName}")
             val value = prop.getter.call(initial)
@@ -122,5 +136,27 @@ class ObservableMap<T : Any>(private val initial: T) {
             }
             ObservableItems(value as List<P>)
         } as ObservableItems<P>
+        subscribeToChild(name, obs)
+        return obs
+    }
+
+    override fun subscribe(observer: Observer): Disposable {
+        subscribers.add(observer)
+        return object : Disposable {
+            override fun dispose() {
+                subscribers.remove(observer)
+            }
+        }
+    }
+
+    /** Subscribe to a child observable so changes propagate to this map's subscribers. */
+    private fun subscribeToChild(name: String, child: Observable) {
+        if (name !in childSubscriptions) {
+            childSubscriptions[name] = child.subscribe { notifySubscribers() }
+        }
+    }
+
+    private fun notifySubscribers() {
+        subscribers.toList().forEach { it.onChange() }
     }
 }

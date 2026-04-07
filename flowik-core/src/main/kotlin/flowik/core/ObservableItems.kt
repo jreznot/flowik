@@ -5,7 +5,7 @@ package flowik.core
  * with the auto-tracking system. Any reaction that reads [items], [size],
  * or iterates the list will re-run when the list is mutated.
  */
-open class ObservableItems<T>(initial: List<T> = emptyList()) : Iterable<T> {
+open class ObservableItems<T>(initial: List<T> = emptyList()) : Iterable<T>, Observable {
 
     /** Internal version counter — observing this is how reactions track "the list changed". */
     private val version = ObservableValue(0L, name = "list-version")
@@ -14,6 +14,9 @@ open class ObservableItems<T>(initial: List<T> = emptyList()) : Iterable<T> {
 
     /** Listeners for fine-grained change events (useful for table/list models). */
     private val changeListeners = mutableListOf<(ListChange<T>) -> Unit>()
+
+    /** External subscribers registered via [subscribe]. */
+    private val subscribers = mutableListOf<Observer>()
 
     /** Snapshot of current items. Reading this auto-tracks. */
     val items: List<T>
@@ -101,8 +104,18 @@ open class ObservableItems<T>(initial: List<T> = emptyList()) : Iterable<T> {
         changeListeners.forEach { it(change) }
     }
 
+    override fun subscribe(observer: Observer): Disposable {
+        subscribers.add(observer)
+        return object : Disposable {
+            override fun dispose() {
+                subscribers.remove(observer)
+            }
+        }
+    }
+
     private fun bumpVersion() {
         version.value = version.untrackedValue + 1
+        subscribers.toList().forEach { it.onChange() }
     }
 }
 

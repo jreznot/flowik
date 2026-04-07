@@ -9,12 +9,14 @@ import kotlin.reflect.KProperty
  * Reads are tracked automatically when a [Tracker] (reaction or computed) is
  * evaluating. Writes notify all tracked dependents.
  */
-class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWriteProperty<Any?, T> {
+class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWriteProperty<Any?, T>, Observable {
 
     private var _value: T = initial
 
     /** All reactions / derived that depend on this observable. */
     private val observers = linkedSetOf<Tracker>()
+    /** External subscribers registered via [subscribe]. */
+    private val subscribers = mutableListOf<Observer>()
 
     var value: T
         get() {
@@ -45,15 +47,26 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
         observers.remove(tracker)
     }
 
+    override fun subscribe(observer: Observer): Disposable {
+        subscribers.add(observer)
+        return object : Disposable {
+            override fun dispose() {
+                subscribers.remove(observer)
+            }
+        }
+    }
+
     private fun notifyObservers() {
         // Snapshot to avoid ConcurrentModificationException
         observers.toList().forEach { tracker ->
             when (tracker) {
                 is Reaction -> Tracking.schedule(tracker)
                 is AutoRun -> Tracking.schedule(tracker)
+                is When -> Tracking.schedule(tracker)
                 is Computed<*> -> tracker.invalidate()
             }
         }
+        subscribers.toList().forEach { it.onChange() }
     }
 
     override fun toString(): String = "ObservableValue(${name ?: "?"}=$_value)"

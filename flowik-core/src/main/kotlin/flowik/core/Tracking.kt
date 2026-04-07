@@ -21,6 +21,9 @@ object Tracking {
     /** Pending autoRuns to notify when the outermost batch ends. */
     private val pendingAutoRuns = ThreadLocal.withInitial { linkedSetOf<AutoRun>() }
 
+    /** Pending [When] reactions to evaluate when the outermost batch ends. */
+    private val pendingWhens = ThreadLocal.withInitial { linkedSetOf<When>() }
+
     val current: Tracker? get() = stack.get().lastOrNull()
 
     fun push(tracker: Tracker) = stack.get().addLast(tracker)
@@ -58,6 +61,14 @@ object Tracking {
         }
     }
 
+    fun schedule(`when`: When) {
+        if (isBatching) {
+            pendingWhens.get().add(`when`)
+        } else {
+            `when`.run()
+        }
+    }
+
     private fun flushPending() {
         val pending = pendingReactions.get()
         // Copy and clear to allow re-entrant scheduling
@@ -69,6 +80,11 @@ object Tracking {
         val autoSnapshot = pendingAuto.toList()
         pendingAuto.clear()
         autoSnapshot.forEach { it.run() }
+
+        val pendingW = pendingWhens.get()
+        val whenSnapshot = pendingW.toList()
+        pendingW.clear()
+        whenSnapshot.forEach { it.run() }
     }
 }
 
