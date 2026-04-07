@@ -12,7 +12,7 @@ import java.awt.event.KeyEvent
 import javax.swing.*
 
 class TodoStore {
-    val todos = Observables<TodoItem>()
+    val todos = observables<TodoItem>()
     val filter = observable("", name = "filter")
     val showCompleted = observable(true, name = "showCompleted")
     val showFilter = observable(false, name = "showFilter")

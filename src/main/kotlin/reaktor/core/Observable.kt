@@ -86,16 +86,6 @@ class Observable<T : Any>(private val initial: T) {
     }
 
     /**
-     * Returns the [ObservableItems] for the list property named [name].
-     *
-     * @throws NoSuchElementException  if [name] does not match any property on [T].
-     * @throws IllegalArgumentException if the property value is not a [List].
-     * @throws IllegalStateException    if the property was already accessed as a
-     *                                  scalar via [get]; access pattern must be consistent.
-     */
-    // ── Identity ────────────────────────────────────────────────────────────
-
-    /**
      * Two [Observable] instances are equal when their wrapped [initial]
      * values are equal. This allows [Observables.remove] to locate a
      * wrapper by its original data value.
@@ -107,6 +97,14 @@ class Observable<T : Any>(private val initial: T) {
 
     override fun toString(): String = "Observable($initial)"
 
+    /**
+     * Returns the [ObservableItems] for the list property named [name].
+     *
+     * @throws NoSuchElementException  if [name] does not match any property on [T].
+     * @throws IllegalArgumentException if the property value is not a [List].
+     * @throws IllegalStateException    if the property was already accessed as a
+     *                                  scalar via [get]; an access pattern must be consistent.
+     */
     @Suppress("UNCHECKED_CAST")
     fun <P> list(name: String): ObservableItems<P> {
         val existing = store[name]

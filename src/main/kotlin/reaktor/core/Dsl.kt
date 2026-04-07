@@ -38,8 +38,6 @@ fun <T : Any> observableObject(initial: T): Observable<T> = Observable(initial)
 fun <T : Any> observables(vararg items: T): Observables<T> =
     Observables(items.toList())
 
-// ── Other reactive primitives ─────────────────────────────────────────────────
-
 /** Create a computed (derived) value with auto-tracking. */
 fun <T> derived(compute: () -> T): Derived<T> = Derived(compute)
 
