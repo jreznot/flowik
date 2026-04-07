@@ -8,7 +8,7 @@ import kotlin.coroutines.CoroutineContext
 // action scope.  Any observable mutations made after resumption must be wrapped
 // in `runInAction` so they are batched and reactions fire exactly once.
 //
-// In Kotlin the identical problem occurs: after a `suspend` point the original
+// In Kotlin the identical problem occurs: after a `suspend` point, the original
 // `action { }` batch is no longer active.  `runInAction` is a named alias for
 // `action` that signals intent in async call sites.
 
@@ -16,7 +16,7 @@ import kotlin.coroutines.CoroutineContext
  * Switch to the Swing EDT ([Dispatchers.Main]) and batch observable mutations.
  *
  * Always call this after every `suspend` point when writing to observables,
- * because after a suspension you may be on a background thread (e.g. IO).
+ * because after a suspension you may be on a background thread (e.g., IO).
  */
 suspend fun <R> runInAction(block: () -> R): R =
     withContext(Dispatchers.Main) { action(block) }
@@ -26,7 +26,7 @@ suspend fun <R> runInAction(block: () -> R): R =
 //
 //   • Runs on [context] (defaults to Dispatchers.Main — the Swing EDT when
 //     kotlinx-coroutines-swing is on the classpath).
-//   • Cancels any previously in-flight invocation automatically when called
+//   • Cancels any previous in-flight invocation automatically when called
 //     again, matching MobX flow's "only one run at a time" guarantee.
 //   • Exposes [isRunning] so the UI can bind a loading indicator.
 //
@@ -49,7 +49,7 @@ suspend fun <R> runInAction(block: () -> R): R =
 
 /**
  * A cancellable async action.  Call [invoke] to start (or restart) the action;
- * any previously running invocation is cancelled first.
+ * any previously running invocation is canceled first.
  *
  * @param context  The [CoroutineContext] the block launches on.  Defaults to
  *                 [Dispatchers.Main], which on Swing dispatches to the EDT.
@@ -77,8 +77,8 @@ class FlowAction(
             try {
                 block()
             } finally {
-                // Use NonCancellable so this runs even when cancelled mid-suspend
-                // (e.g. while inside withContext(Dispatchers.IO)), and Dispatchers.Main
+                // Use NonCancellable so this runs even when canceled mid-suspend
+                // (e.g., while inside withContext(Dispatchers.IO)), and Dispatchers.Main
                 // to guarantee the mutation happens on the EDT.
                 withContext(NonCancellable + Dispatchers.Main) {
                     _isRunning.value = false

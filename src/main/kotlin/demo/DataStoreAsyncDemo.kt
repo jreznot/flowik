@@ -1,7 +1,10 @@
 package demo
 
 import com.formdev.flatlaf.FlatLightLaf
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.withContext
 import reaktor.core.*
 import reaktor.layout.rframe
 import reaktor.swing.*
@@ -23,11 +26,11 @@ private val CATALOGUE = listOf(
 
 class PlanetStore {
     val query    = observable("", name = "query")
-    val results  = Observables<Planet>()
+    val results  = observables<Planet>()
     val progress = observable(0,  name = "progress")
     val errorMsg = observable("", name = "errorMsg")
 
-    // Display list — unboxed mapValues; re-derives whenever results change.
+    // Display list — unboxed mapValues; recomputes whenever results change.
     val displayItems: Derived<List<String>> = results.mapValues { p ->
         "%-10s  %5.2f AU   %d moon%s".format(p.name, p.distanceAu, p.moons, if (p.moons == 1) "" else "s")
     }
