@@ -193,7 +193,7 @@ fun main() {
                         border = BorderFactory.createEmptyBorder(4, 0, 8, 0)
                     }
                     hglue()
-                    this.Button("v") {
+                    Button("v") {
                         store.showFilter.value = !store.showFilter.value
                     }
                 }
@@ -219,14 +219,13 @@ fun main() {
                         add(todoListPanel(store))
                     }
 
-                    // Add-item row at the bottom
                     south {
                         rhbox(gap = 6) {
                             Label("New todo:")
                             val input = observable("", name = "newItemInput")
                             val tf = TextField(input, columns = 28)
                             spacer(width = 4)
-                            this.Button("Add") {
+                            Button("Add") {
                                 store.addItem(input.value)
                                 input.value = ""
                                 tf.requestFocusInWindow()
@@ -240,7 +239,7 @@ fun main() {
                 rhbox(gap = 6) {
                     Label(store.statusText)
                     hglue()
-                    this.Button("Clear completed") { store.clearCompleted() }
+                    Button("Clear completed") { store.clearCompleted() }
                 }
             }
         }

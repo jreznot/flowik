@@ -19,7 +19,6 @@ class RButton(
         }
     }
 
-    /** Optionally bind enabled state to a reactive expression. */
     fun bindEnabled(provider: () -> Boolean) {
         autoReaction("RButton.enabled") {
             isEnabled = provider()

@@ -9,7 +9,7 @@ import javax.swing.JLabel
  * A reactive label. Binds its text and/or icon to observable values
  * or computed derivations.
  */
-class RLabel private constructor() : JLabel(), RComponent {
+class RLabel : JLabel(), RComponent {
 
     fun bindText(obs: ObservableValue<String>) {
         autoReaction("RLabel.text") { text = obs.value }

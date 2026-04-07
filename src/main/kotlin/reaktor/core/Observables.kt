@@ -39,4 +39,10 @@ class Observables<T : Any>(initial: List<T> = emptyList())
      */
     @JvmName("removeItem")
     fun remove(item: T): Boolean = super.remove(Observable(item))
+
+    @JvmName("setAllItems")
+    fun setAll(items: List<T>) = action {
+        clear()
+        items.forEach { super.add(Observable(it)) }
+    }
 }

@@ -57,8 +57,6 @@ class Derived<T>(private val compute: () -> T) : Tracker {
         }
     }
 
-    // ── Tracker interface ────────────────────────────────────────────
-
     override fun addDependency(observable: ObservableValue<*>) {
         dependencies.add(observable)
         observable.addObserver(this)
