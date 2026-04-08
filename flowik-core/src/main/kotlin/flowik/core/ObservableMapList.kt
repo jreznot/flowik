@@ -4,7 +4,7 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 /**
- * An [ObservableItems] that automatically wraps each added [T] in an
+ * An [ObservableList] that automatically wraps each added [T] in an
  * [ObservableMap], so callers work with plain data values while the list
  * stores and exposes reactive [ObservableMap]<[T]> wrappers.
  *
@@ -12,14 +12,14 @@ import kotlin.reflect.KProperty
  * ```kotlin
  * data class TodoItem(val text: String, val done: Boolean = false)
  *
- * val todos = Observables<TodoItem>()
+ * val todos = ObservableMapList<TodoItem>()
  * todos.add(TodoItem("Buy milk"))          // plain value, auto-wrapped
  *
  * val item: ObservableMap<TodoItem> = todos[0]
  * item[TodoItem::done].value = true        // fine-grained reactive update
  * ```
  */
-class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<ObservableMap<T>>(),
+class ObservableMapList<T : Any>(initial: List<T> = emptyList()) : ObservableList<ObservableMap<T>>(),
     ReadWriteProperty<Any?, MutableList<T>> {
 
     init {
@@ -51,7 +51,7 @@ class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<Obs
 
     /**
      * A [MutableList] view that delegates mutating operations back to this
-     * [Observables] instance, keeping reactive tracking intact.
+     * [ObservableMapList] instance, keeping reactive tracking intact.
      */
     private val delegate: MutableList<T> by lazy { DelegateList() }
 
@@ -66,31 +66,31 @@ class Observables<T : Any>(initial: List<T> = emptyList()) : ObservableItems<Obs
 
     /**
      * Mutable list implementation that delegates add/remove/clear/size and
-     * other read operations to the owning [Observables] instance.
+     * other read operations to the owning [ObservableMapList] instance.
      */
     private inner class DelegateList : AbstractMutableList<T>() {
         override val size: Int
-            get() = this@Observables.size
+            get() = this@ObservableMapList.size
 
-        override fun get(index: Int): T = this@Observables[index].value
+        override fun get(index: Int): T = this@ObservableMapList[index].value
 
         override fun add(index: Int, element: T) {
-            this@Observables.add(index, element)
+            this@ObservableMapList.add(index, element)
         }
 
         override fun removeAt(index: Int): T {
-            val removed = this@Observables.removeAt(index)
+            val removed = this@ObservableMapList.removeAt(index)
             return removed.value
         }
 
         override fun set(index: Int, element: T): T {
-            val old = this@Observables[index].value
-            this@Observables[index] = ObservableMap(element)
+            val old = this@ObservableMapList[index].value
+            this@ObservableMapList[index] = ObservableMap(element)
             return old
         }
 
         override fun clear() {
-            this@Observables.clear()
+            this@ObservableMapList.clear()
         }
     }
 }

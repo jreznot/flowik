@@ -2,7 +2,7 @@ package flowik.swing
 
 import flowik.core.Computed
 import flowik.core.ListChange
-import flowik.core.ObservableItems
+import flowik.core.ObservableList
 import flowik.layout.PanelScope
 import java.awt.LayoutManager
 import javax.swing.BoxLayout
@@ -10,12 +10,12 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * A reactive JPanel whose children are kept in sync with an [ObservableItems]
+ * A reactive JPanel whose children are kept in sync with an [ObservableList]
  * or a [Computed]<List<T>> via a mapping function.
  *
  * Call [bindItems] to connect the list and supply the mapping function.
  *
- * - The [ObservableItems] overload uses fine-grained [ListChange] events —
+ * - The [ObservableList] overload uses fine-grained [ListChange] events —
  *   no full rebuild occurs on incremental mutations.
  * - The [Computed] overload uses [autoReaction] to fully rebuild all children
  *   whenever the computed list changes.
@@ -29,7 +29,7 @@ class RForEach<T>(layout: LayoutManager? = null) : JPanel(), RComponent {
         this.layout = layout ?: BoxLayout(this, BoxLayout.Y_AXIS)
     }
 
-    fun bindItems(list: ObservableItems<T>, map: (T) -> JComponent) {
+    fun bindItems(list: ObservableList<T>, map: (T) -> JComponent) {
         for (item in list.items) {
             val comp = map(item)
             children.add(comp)
@@ -100,7 +100,7 @@ class RForEach<T>(layout: LayoutManager? = null) : JPanel(), RComponent {
 }
 
 fun <T> PanelScope.ForEach(
-    list: ObservableItems<T>,
+    list: ObservableList<T>,
     layout: LayoutManager? = null,
     map: (T) -> JComponent
 ): RForEach<T> = RForEach<T>(layout).also { it.bindItems(list, map); panel.add(it) }

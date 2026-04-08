@@ -3,8 +3,8 @@ package flowik.core
 /**
  * A reactive source that notifies [Observer] subscribers when its value changes.
  *
- * Implemented by [ObservableValue], [Computed], [ObservableItems],
- * [ObservableMap], and [Observables].
+ * Implemented by [ObservableValue], [Computed], [ObservableList],
+ * [ObservableMap], and [ObservableMapList].
  */
 interface Observable {
 

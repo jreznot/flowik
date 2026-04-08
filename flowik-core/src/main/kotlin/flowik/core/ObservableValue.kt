@@ -15,6 +15,7 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
 
     /** All reactions / derived that depend on this observable. */
     private val observers = linkedSetOf<Tracker>()
+
     /** External subscribers registered via [subscribe]. */
     private val subscribers = mutableListOf<Observer>()
 
@@ -58,7 +59,7 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
 
     private fun notifyObservers() {
         // Snapshot to avoid ConcurrentModificationException
-        observers.toList().forEach { tracker ->
+        for (tracker in observers.toList()) {
             when (tracker) {
                 is Reaction -> Tracking.schedule(tracker)
                 is AutoRun -> Tracking.schedule(tracker)

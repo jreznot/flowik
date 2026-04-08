@@ -6,10 +6,10 @@ import kotlin.reflect.full.memberProperties
 /**
  * Wraps an instance of [T] and exposes each property as an independent
  * reactive container:
- * - scalar properties → [ObservableValue]
- * - [List] properties → [ObservableItems]
+ * - Scalar properties → [ObservableValue]
+ * - [List] properties → [ObservableList]
  *
- * Containers are created lazily on first access and cached.  Initial values
+ * Containers are created lazily on first access and cached. Initial values
  * are read from [initial].
  *
  * Example:
@@ -20,11 +20,11 @@ import kotlin.reflect.full.memberProperties
  *
  * // Type-safe — compiler picks the right overload automatically
  * val name:    ObservableValue<String>  = team[Team::name]
- * val members: ObservableItems<String>   = team[Team::members]
+ * val members: ObservableList<String>   = team[Team::members]
  *
  * // String-based (unchecked cast)
  * val name2:    ObservableValue<String> = team.get("name")
- * val members2: ObservableItems<String>  = team.list("members")
+ * val members2: ObservableList<String>  = team.list("members")
  * ```
  */
 class ObservableMap<T : Any>(private val initial: T) : Observable {
@@ -40,7 +40,7 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
      */
     val value: T get() = initial
 
-    // Holds ObservableValue<Any?> for scalars, ObservableItems<Any?> for lists.
+    // Holds ObservableValue<Any?> for scalars, ObservableList<Any?> for lists.
     private val store = mutableMapOf<String, Any>()
 
     /** External subscribers registered via [subscribe]. */
@@ -65,17 +65,17 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
     }
 
     /**
-     * Returns the [ObservableItems] for a list property.
+     * Returns the [ObservableList] for a list property.
      *
      * This overload is more specific than [get(KProperty1<T, P>)] and is
      * selected automatically by the compiler when [prop] is typed as
      * `KProperty1<T, List<P>>`.
      */
     @Suppress("UNCHECKED_CAST")
-    operator fun <P> get(prop: KProperty1<T, List<P>>): ObservableItems<P> {
+    operator fun <P> get(prop: KProperty1<T, List<P>>): ObservableList<P> {
         val obs = store.getOrPut(prop.name) {
-            ObservableItems(prop.get(initial))
-        } as ObservableItems<P>
+            ObservableList(prop.get(initial))
+        } as ObservableList<P>
         subscribeToChild(prop.name, obs)
         return obs
     }
@@ -89,8 +89,8 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
     @Suppress("UNCHECKED_CAST")
     fun <P> get(name: String): ObservableValue<P> {
         val existing = store[name]
-        check(existing !is ObservableItems<*>) {
-            "Property '$name' is a List — use list(\"$name\") to get its ObservableItems"
+        check(existing !is ObservableList<*>) {
+            "Property '$name' is a List — use list(\"$name\") to get its ObservableList"
         }
         val obs = store.getOrPut(name) {
             val prop = initial::class.memberProperties.find { it.name == name }
@@ -103,7 +103,7 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
 
     /**
      * Two [ObservableMap] instances are equal when their wrapped [initial]
-     * values are equal. This allows [Observables.remove] to locate a
+     * values are equal. This allows [ObservableMapList.remove] to locate a
      * wrapper by its original data value.
      */
     override fun equals(other: Any?): Boolean =
@@ -114,7 +114,7 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
     override fun toString(): String = "ObservableMap($initial)"
 
     /**
-     * Returns the [ObservableItems] for the list property named [name].
+     * Returns the [ObservableList] for the list property named [name].
      *
      * @throws NoSuchElementException  if [name] does not match any property on [T].
      * @throws IllegalArgumentException if the property value is not a [List].
@@ -122,7 +122,7 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
      *                                  scalar via [get]; an access pattern must be consistent.
      */
     @Suppress("UNCHECKED_CAST")
-    fun <P> list(name: String): ObservableItems<P> {
+    fun <P> list(name: String): ObservableList<P> {
         val existing = store[name]
         check(existing !is ObservableValue<*>) {
             "Property '$name' was already accessed as a scalar ObservableValue — access pattern must be consistent"
@@ -134,8 +134,8 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
             require(value is List<*>) {
                 "Property '$name' is not a List (found ${value?.javaClass?.simpleName})"
             }
-            ObservableItems(value as List<P>)
-        } as ObservableItems<P>
+            ObservableList(value as List<P>)
+        } as ObservableList<P>
         subscribeToChild(name, obs)
         return obs
     }

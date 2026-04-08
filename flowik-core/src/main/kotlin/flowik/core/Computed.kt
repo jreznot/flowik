@@ -1,5 +1,8 @@
 package flowik.core
 
+import kotlin.properties.ReadOnlyProperty
+import kotlin.reflect.KProperty
+
 /**
  * A derived (computed) value that auto-tracks its dependencies and caches
  * the result. Re-evaluates lazily when any upstream observable changes.
@@ -7,7 +10,7 @@ package flowik.core
  * A [Computed] is both a [Tracker] (it observes other observables)
  * and behaves like an observable (reactions can depend on it).
  */
-class Computed<T>(private val compute: () -> T) : Tracker, Observable {
+class Computed<T>(private val compute: () -> T) : Tracker, Observable, ReadOnlyProperty<Any?, T> {
 
     private var cachedValue: T? = null
     private var isDirty = true
@@ -85,5 +88,9 @@ class Computed<T>(private val compute: () -> T) : Tracker, Observable {
                 subscribers.remove(observer)
             }
         }
+    }
+
+    override fun getValue(thisRef: Any?, property: KProperty<*>): T {
+        return value
     }
 }

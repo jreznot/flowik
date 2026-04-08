@@ -36,16 +36,16 @@ fun <T : Any> observable(initial: T): ObservableMap<T> = ObservableMap(initial)
 /** Explicit alias — prefer [observable] for brevity. */
 fun <T : Any> observableMap(initial: T): ObservableMap<T> = ObservableMap(initial)
 
-/** Create an [Observables] pre-populated with [items]. */
-fun <T : Any> observables(vararg items: T): Observables<T> =
-    Observables(items.toList())
+/** Create an [ObservableMapList] pre-populated with [items]. */
+fun <T : Any> observables(vararg items: T): ObservableMapList<T> =
+    ObservableMapList(items.toList())
 
 /** Create a computed (derived) value with auto-tracking. */
 fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
 
 /**
  * Create and immediately run a reaction. Returns the [Reaction] so it can
- * be disposed later (e.g. when a component is removed from the hierarchy).
+ * be disposed later (e.g., when a component is removed from the hierarchy).
  */
 fun reaction(name: String? = null, effect: () -> Unit): Reaction {
     val r = Reaction(name, effect)

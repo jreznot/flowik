@@ -2,7 +2,7 @@ package flowik.swing
 
 import flowik.core.Computed
 import flowik.core.ListChange
-import flowik.core.ObservableItems
+import flowik.core.ObservableList
 import flowik.layout.PanelScope
 import javax.swing.AbstractListModel
 import javax.swing.JList
@@ -11,8 +11,8 @@ import javax.swing.JScrollPane
 /**
  * A reactive list view.
  *
- * Call [bindItems] to connect an [ObservableItems] or [Computed]<[List]>.
- * Fine-grained [ListChange] events are used when binding an [ObservableItems]
+ * Call [bindItems] to connect an [ObservableList] or [Computed]<[List]>.
+ * Fine-grained [ListChange] events are used when binding an [ObservableList]
  * directly; a [Computed] source rebuilds the list on each change.
  */
 class RList<T> : JScrollPane(), RComponent {
@@ -22,8 +22,8 @@ class RList<T> : JScrollPane(), RComponent {
 
     init { setViewportView(jList) }
 
-    /** Bind directly to an [ObservableItems]; uses fine-grained change events. */
-    fun bindItems(source: ObservableItems<T>) {
+    /** Bind directly to an [ObservableList]; uses fine-grained change events. */
+    fun bindItems(source: ObservableList<T>) {
         listModel?.dispose()
         val model = ReactiveListModel(source)
         listModel = model
@@ -32,7 +32,7 @@ class RList<T> : JScrollPane(), RComponent {
 
     /** Bind to a computed list; rebuilds on every change. */
     fun bindItems(computed: Computed<List<T>>) {
-        val data = ObservableItems<T>()
+        val data = ObservableList<T>()
         bindItems(data)
         autoReaction("RList.computed") { data.setAll(computed.value) }
     }
@@ -44,7 +44,7 @@ class RList<T> : JScrollPane(), RComponent {
     }
 
     private class ReactiveListModel<T>(
-        private val data: ObservableItems<T>
+        private val data: ObservableList<T>
     ) : AbstractListModel<T>() {
 
         private var snapshot = data.items.toList()
@@ -88,7 +88,7 @@ class RList<T> : JScrollPane(), RComponent {
     }
 }
 
-fun <T> PanelScope.ListBox(data: ObservableItems<T>): RList<T> =
+fun <T> PanelScope.ListBox(data: ObservableList<T>): RList<T> =
     RList<T>().also { it.bindItems(data); panel.add(it) }
 
 fun <T> PanelScope.ListBox(computed: Computed<List<T>>): RList<T> =

@@ -1,6 +1,6 @@
 package flowik.swing
 
-import flowik.core.ObservableItems
+import flowik.core.ObservableList
 import flowik.core.ObservableValue
 import flowik.core.action
 import flowik.layout.PanelScope
@@ -18,7 +18,7 @@ class RComboBox<T> : JComboBox<Any?>(), RComponent {
 
     private var updating = false
 
-    fun bind(items: ObservableItems<T>, selection: ObservableValue<T?>) {
+    fun bind(items: ObservableList<T>, selection: ObservableValue<T?>) {
         autoReaction("RComboBox.items") {
             updating = true
             val cbModel = DefaultComboBoxModel<Any?>()
@@ -49,5 +49,5 @@ class RComboBox<T> : JComboBox<Any?>(), RComponent {
     }
 }
 
-fun <T> PanelScope.ComboBox(items: ObservableItems<T>, selection: ObservableValue<T?>): RComboBox<T> =
+fun <T> PanelScope.ComboBox(items: ObservableList<T>, selection: ObservableValue<T?>): RComboBox<T> =
     RComboBox<T>().also { it.bind(items, selection); panel.add(it) }
