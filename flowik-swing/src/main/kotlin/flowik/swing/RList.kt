@@ -20,7 +20,9 @@ class RList<T> : JScrollPane(), RComponent {
     val jList = JList<T>()
     private var listModel: ReactiveListModel<T>? = null
 
-    init { setViewportView(jList) }
+    init {
+        setViewportView(jList)
+    }
 
     /** Bind directly to an [ObservableList]; uses fine-grained change events. */
     fun bindItems(source: ObservableList<T>) {
@@ -57,14 +59,17 @@ class RList<T> : JScrollPane(), RComponent {
                         snapshot = data.items
                         fireIntervalAdded(this, change.index, change.index)
                     }
+
                     is ListChange.Remove -> {
                         snapshot = data.items
                         fireIntervalRemoved(this, change.index, change.index)
                     }
+
                     is ListChange.Update -> {
                         snapshot = data.items
                         fireContentsChanged(this, change.index, change.index)
                     }
+
                     is ListChange.Clear -> {
                         val oldSize = snapshot.size
                         snapshot = emptyList()
@@ -84,7 +89,9 @@ class RList<T> : JScrollPane(), RComponent {
         override fun getSize(): Int = snapshot.size
         override fun getElementAt(index: Int): T = snapshot[index]
 
-        fun dispose() { reaction.dispose() }
+        fun dispose() {
+            reaction.dispose()
+        }
     }
 }
 

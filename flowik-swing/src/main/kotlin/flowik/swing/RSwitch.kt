@@ -16,7 +16,9 @@ import javax.swing.JPanel
  */
 class RSwitch<T> : JPanel(), RComponent {
 
-    init { layout = BorderLayout() }
+    init {
+        layout = BorderLayout()
+    }
 
     fun bind(observe: () -> T, map: (T) -> JComponent) {
         var lastValue: Any? = Unset

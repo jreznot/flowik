@@ -61,10 +61,14 @@ open class PanelScope(val panel: JPanel) {
     }
 
     /** Add vertical glue (for BoxLayout). */
-    fun vglue() { panel.add(Box.createVerticalGlue()) }
+    fun vglue() {
+        panel.add(Box.createVerticalGlue())
+    }
 
     /** Add horizontal glue (for BoxLayout). */
-    fun hglue() { panel.add(Box.createHorizontalGlue()) }
+    fun hglue() {
+        panel.add(Box.createHorizontalGlue())
+    }
 
     /** Add a rigid spacing area. */
     fun spacer(width: Int = 0, height: Int = 0) {

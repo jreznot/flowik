@@ -44,11 +44,13 @@ class RForEach<T>(layout: LayoutManager? = null) : JPanel(), RComponent {
                     add(comp, change.index)
                     revalidate(); repaint()
                 }
+
                 is ListChange.Remove -> {
                     val comp = children.removeAt(change.index)
                     remove(comp)
                     revalidate(); repaint()
                 }
+
                 is ListChange.Update -> {
                     val old = children[change.index]
                     remove(old)
@@ -57,6 +59,7 @@ class RForEach<T>(layout: LayoutManager? = null) : JPanel(), RComponent {
                     add(new, change.index)
                     revalidate(); repaint()
                 }
+
                 is ListChange.Clear -> {
                     children.clear()
                     removeAll()
