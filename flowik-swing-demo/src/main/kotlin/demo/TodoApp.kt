@@ -4,7 +4,6 @@ import com.formdev.flatlaf.FlatLightLaf
 import flowik.core.*
 import flowik.layout.uiFrame
 import flowik.swing.*
-import flowik.swing.autoRun
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component

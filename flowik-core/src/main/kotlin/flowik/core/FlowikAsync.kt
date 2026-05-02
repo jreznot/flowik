@@ -3,7 +3,6 @@ package flowik.core
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 
-//
 // In MobX, leaving an async function at an `await` point exits the current
 // action scope.  Any observable mutations made after resumption must be wrapped
 // in `runInAction` so they are batched and reactions fire exactly once.
@@ -18,11 +17,13 @@ import kotlin.coroutines.CoroutineContext
  * Always call this after every `suspend` point when writing to observables,
  * because after a suspension you may be on a background thread (e.g., IO).
  */
-suspend fun <R> runInAction(block: () -> R): R =
-    withContext(Dispatchers.Main) { action(block) }
+suspend fun <R> runInAction(block: () -> R): R {
+    return withContext(Dispatchers.Main) {
+        action(block)
+    }
+}
 
-//
-// Analogous to MobX's `flow` utility.  A FlowAction wraps a suspend block and:
+// Analogous to MobX's `flow` utility. A FlowAction wraps a suspend block and:
 //
 //   • Runs on [context] (defaults to Dispatchers.Main — the Swing EDT when
 //     kotlinx-coroutines-swing is on the classpath).
@@ -57,6 +58,7 @@ suspend fun <R> runInAction(block: () -> R): R =
  */
 class FlowAction(
     private val context: CoroutineContext = Dispatchers.Main,
+    private val mainContext: CoroutineContext = Dispatchers.Main,
     private val block: suspend () -> Unit,
 ) {
     private val _isRunning = ObservableValue(false, name = "FlowAction.isRunning")
@@ -80,7 +82,7 @@ class FlowAction(
                 // Use NonCancellable so this runs even when canceled mid-suspend
                 // (e.g., while inside withContext(Dispatchers.IO)), and Dispatchers.Main
                 // to guarantee the mutation happens on the EDT.
-                withContext(NonCancellable + Dispatchers.Main) {
+                withContext(NonCancellable + mainContext) {
                     _isRunning.value = false
                 }
             }
@@ -102,5 +104,6 @@ class FlowAction(
  */
 fun flowAction(
     context: CoroutineContext = Dispatchers.Main,
+    mainContext: CoroutineContext = Dispatchers.Main,
     block: suspend () -> Unit,
-): FlowAction = FlowAction(context, block)
+): FlowAction = FlowAction(context, mainContext, block)

@@ -8,7 +8,7 @@ import kotlin.reflect.KProperty0
 import kotlin.reflect.jvm.isAccessible
 
 // Each overload is more specific than the generic fallback below, so Kotlin's
-// overload resolution will always route these types here.  The name parameter
+// overload resolution will always route these types here. The name parameter
 // is kept for debugging / toString purposes.
 
 fun observable(initial: Boolean, name: String? = null): ObservableValue<Boolean> = ObservableValue(initial, name)
@@ -26,9 +26,8 @@ fun observable(initial: LocalTime, name: String? = null): ObservableValue<LocalT
 fun observable(initial: LocalDateTime, name: String? = null): ObservableValue<LocalDateTime> =
     ObservableValue(initial, name)
 
-// Any type not matched by the overloads above (data classes, domain objects,
-// etc.) is wrapped in an ObservableMap, exposing each property as an
-// individual ObservableValue.
+// Any type not matched by the overloads above (data classes, domain objects, etc.)
+// is wrapped in an ObservableMap, exposing each property as an individual ObservableValue.
 
 /** Wrap an arbitrary [T] instance, exposing each property as an [ObservableValue]. */
 fun <T : Any> observable(initial: T): ObservableMap<T> = ObservableMap(initial)
@@ -85,15 +84,18 @@ fun autoRun(
  * Returns the [When] (a [Disposable]) so callers can cancel the reaction
  * before the predicate ever becomes `true`.
  */
-fun whenThen(predicate: () -> Boolean, name: String? = null, effect: () -> Unit): Disposable {
+fun whenThen(
+    predicate: () -> Boolean,
+    name: String? = null,
+    effect: () -> Unit
+): Disposable {
     val w = When(name, predicate, effect)
     w.run()
     return w
 }
 
 /**
- * Batch multiple observable writes so that reactions fire only once,
- * after the block completes.
+ * Batch multiple observable writes so that reactions fire only once, after the block completes.
  */
 inline fun <R> action(block: () -> R): R {
     Tracking.beginBatch()
