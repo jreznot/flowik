@@ -46,7 +46,7 @@ open class PanelScope(val panel: JPanel) {
         return child
     }
 
-    fun rpanel(layout: LayoutManager? = null, init: PanelScope.() -> Unit): JPanel {
+    fun Panel(layout: LayoutManager? = null, init: PanelScope.() -> Unit): JPanel {
         val child = JPanel(layout ?: FlowLayout())
         PanelScope(child).init()
         panel.add(child)

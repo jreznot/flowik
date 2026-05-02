@@ -11,6 +11,10 @@ import java.awt.Font
 import java.awt.event.KeyEvent
 import javax.swing.*
 
+fun main() {
+    todoDemo()
+}
+
 class TodoStore {
     val todos = observables<TodoItem>()
     val filter = observable("", name = "filter")
@@ -203,7 +207,7 @@ fun todoDemo() {
                 borderPanel(gap = 4) {
                     north {
                         vbox(gap = 4) {
-                            rpanel(visible = store.showFilter) {
+                            Panel(visible = store.showFilter) {
                                 hbox(gap = 6) {
                                     Label("Filter:")
                                     TextField(store.filter, columns = 18)
@@ -244,9 +248,4 @@ fun todoDemo() {
             }
         }
     }
-}
-
-fun main() {
-    todoDemo()
-    // dataStoreAsyncDemo()
 }

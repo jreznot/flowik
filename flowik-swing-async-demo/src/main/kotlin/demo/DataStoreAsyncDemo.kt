@@ -1,3 +1,5 @@
+@file:Suppress("GrazieStyle")
+
 package demo
 
 import com.formdev.flatlaf.FlatLightLaf
@@ -53,7 +55,7 @@ class PlanetStore {
     /**
      * Cancellable async fetch.  Demonstrates the three-step async pattern:
      *
-     *  1. [runInAction] before the first suspension — batch-reset all state on EDT.
+     *  1. [runInAction] before the first suspension — batch-reset all states on EDT.
      *  2. [withContext] to simulate blocking IO off the EDT.
      *  3. [runInAction] after each resumption — mutations are dispatched back to EDT.
      *
@@ -126,7 +128,6 @@ fun dataStoreAsyncDemo() {
                 borderPanel(gap = 6) {
                     north {
                         vbox(gap = 4) {
-
                             hbox(gap = 6) {
                                 Label("Query:")
                                 TextField(store::query, columns = 18)
@@ -146,7 +147,7 @@ fun dataStoreAsyncDemo() {
                                 }
                             }
 
-                            rpanel(visible = store.fetch.isRunning) {
+                            Panel(visible = store.fetch.isRunning) {
                                 progressBar(store::progress)
                             }
 

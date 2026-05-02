@@ -96,8 +96,14 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Obse
         }
     }
 
-    fun onChange(listener: (ListChange<T>) -> Unit) {
+    fun onChange(listener: (ListChange<T>) -> Unit) : Disposable {
         changeListeners.add(listener)
+
+        return object : Disposable {
+            override fun dispose() {
+                changeListeners.remove(listener)
+            }
+        }
     }
 
     private fun fireChange(change: ListChange<T>) {
