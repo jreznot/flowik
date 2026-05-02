@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatLightLaf
 import flowik.core.*
 import flowik.layout.uiFrame
 import flowik.swing.*
+import flowik.swing.autoRun
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -61,7 +62,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
         selectionMode = ListSelectionModel.SINGLE_SELECTION
     }
 
-    reaction("todoList.rebuild") {
+    autoRun("todoList.rebuild") {
         val visible = store.visibleItems.value
         // track each item's done state so the list repaints on toggle
         visible.forEach { it[TodoItem::done].value }

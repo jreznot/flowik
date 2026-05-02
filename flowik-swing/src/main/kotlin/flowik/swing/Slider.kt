@@ -7,7 +7,7 @@ import javax.swing.JSlider
 
 fun JSlider.bindValue(model: ObservableValue<Int>) {
     var updating = false
-    autoReaction("JSlider.sync") {
+    autoRun("JSlider.sync") {
         val current = model.value
         if (value != current) {
             updating = true

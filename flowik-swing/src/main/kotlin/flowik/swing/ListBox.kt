@@ -1,18 +1,21 @@
 package flowik.swing
 
 import flowik.core.Computed
+import flowik.core.Disposable
 import flowik.core.ListChange
 import flowik.core.ObservableList
 import flowik.layout.PanelScope
 import javax.swing.AbstractListModel
+import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JScrollPane
 
 private class ReactiveListModel<T>(
+    component: JComponent,
     private val data: ObservableList<T>
 ) : AbstractListModel<T>() {
     private var snapshot = data.items.toList()
-    private val reaction: flowik.core.Reaction
+    private val subscription: Disposable
 
     init {
         data.onChange { change ->
@@ -36,7 +39,7 @@ private class ReactiveListModel<T>(
                 }
             }
         }
-        reaction = flowik.core.reaction("ReactiveListModel.sync") {
+        subscription = component.autoRun("ReactiveListModel.sync") {
             val newSnapshot = data.items
             if (newSnapshot != snapshot) {
                 snapshot = newSnapshot
@@ -50,7 +53,7 @@ private class ReactiveListModel<T>(
     override fun getElementAt(index: Int): T = snapshot[index]
 
     fun dispose() {
-        reaction.dispose()
+        subscription.dispose()
     }
 }
 
@@ -65,7 +68,7 @@ fun <T> JList<T>.bindItems(source: ObservableList<T>) {
     val currentModel = model as? ReactiveListModel<*>
     currentModel?.dispose()
 
-    val newModel = ReactiveListModel(source)
+    val newModel = ReactiveListModel(this, source)
     this.model = newModel
 
     onDetached { newModel.dispose() }
@@ -74,7 +77,7 @@ fun <T> JList<T>.bindItems(source: ObservableList<T>) {
 fun <T> JList<T>.bindItems(computed: Computed<List<T>>) {
     val data = ObservableList<T>()
     bindItems(data)
-    autoReaction("JList.computed") {
+    autoRun("JList.computed") {
         data.setAll(computed.value)
     }
 }

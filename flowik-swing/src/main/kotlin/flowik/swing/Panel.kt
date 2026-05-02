@@ -7,7 +7,7 @@ import javax.swing.BoxLayout
 import javax.swing.JPanel
 
 fun JPanel.bindVisible(visible: ObservableValue<Boolean>) {
-    autoReaction("JPanel.visibility") {
+    autoRun("JPanel.visibility") {
         val shouldBeVisible = visible.value
         if (isVisible != shouldBeVisible) {
             isVisible = shouldBeVisible

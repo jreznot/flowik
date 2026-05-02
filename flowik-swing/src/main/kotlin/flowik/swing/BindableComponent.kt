@@ -1,6 +1,6 @@
 package flowik.swing
 
-import flowik.core.Reaction
+import flowik.core.Disposable
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 
@@ -19,14 +19,14 @@ internal fun JComponent.onDetached(action: () -> Unit) {
 }
 
 interface FlowikBindableComponent {
-    /** Create a reaction and register it for automatic disposal. */
-    fun autoReaction(name: String? = null, effect: () -> Unit): Reaction
+    /** Create an autoRun and register it for automatic disposal. */
+    fun autoRun(name: String? = null, effect: () -> Unit): Disposable
 }
 
 fun JComponent.asBindableComponent(): FlowikBindableComponent = BindableComponentWrapper(this)
 
-fun JComponent.autoReaction(name: String? = null, effect: () -> Unit): Reaction =
-    asBindableComponent().autoReaction(name, effect)
+fun JComponent.autoRun(name: String? = null, effect: () -> Unit): Disposable =
+    asBindableComponent().autoRun(name, effect)
 
 private class BindableComponentWrapper(val component: JComponent) : FlowikBindableComponent {
     init {
@@ -38,22 +38,23 @@ private class BindableComponentWrapper(val component: JComponent) : FlowikBindab
         }
     }
 
-    /** Create a reaction and register it for automatic disposal. */
-    override fun autoReaction(name: String?, effect: () -> Unit): Reaction {
-        val r = flowik.core.reaction(name, effect)
+    override fun autoRun(name: String?, effect: () -> Unit): Disposable {
+        val r = flowik.core.autoRun(name, effect)
         reactions().add(r)
         return r
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun reactions(): MutableList<Reaction> {
-        return component.getClientProperty(REACTIONS_KEY) as? MutableList<Reaction>
-            ?: mutableListOf<Reaction>().also { component.putClientProperty(REACTIONS_KEY, it) }
+    private fun reactions(): MutableList<Disposable> {
+        return component.getClientProperty(REACTIONS_KEY) as? MutableList<Disposable>
+            ?: mutableListOf<Disposable>().also { component.putClientProperty(REACTIONS_KEY, it) }
     }
 
     private fun removeNotify() {
         val list = reactions()
-        list.forEach { it.dispose() }
+        for (it in list) {
+            it.dispose()
+        }
         list.clear()
     }
 }

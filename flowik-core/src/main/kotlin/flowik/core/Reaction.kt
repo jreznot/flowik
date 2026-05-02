@@ -1,39 +1,48 @@
 package flowik.core
 
 /**
- * A side effect that re-runs automatically whenever its observed dependencies change.
+ * A side effect with MobX-style reaction semantics.
+ *
+ * [dataTracker] is evaluated with tracking — its observable reads become dependencies.
+ * [effect] receives the current value and runs whenever tracked data changes.
+ * [effect] is NOT tracked; observables read inside it do not become dependencies.
+ * Does NOT fire on creation — only on subsequent dependency changes.
  */
-class Reaction(
+class Reaction<T>(
     private val name: String? = null,
-    private val effect: () -> Unit
+    private val dataTracker: () -> T,
+    private val effect: (T) -> Unit
 ) : Tracker, Disposable {
 
     private val dependencies = mutableSetOf<ObservableValue<*>>()
     private var isDisposed = false
+    private var initialized = false
 
-    /** Run the reaction, tracking dependencies. */
     fun run() {
         if (isDisposed) return
 
-        // Unsubscribe from old dependencies
         dependencies.forEach { it.removeObserver(this) }
         dependencies.clear()
 
-        // Execute and track
         Tracking.push(this)
+        val data: T
         try {
-            effect()
+            data = dataTracker()
         } finally {
             Tracking.pop()
         }
+
+        if (!initialized) {
+            initialized = true
+            return
+        }
+
+        effect(data)
     }
 
-    /** Stop this reaction from ever running again. */
     override fun dispose() {
         isDisposed = true
-        for (it in dependencies) {
-            it.removeObserver(this)
-        }
+        dependencies.forEach { it.removeObserver(this) }
         dependencies.clear()
     }
 

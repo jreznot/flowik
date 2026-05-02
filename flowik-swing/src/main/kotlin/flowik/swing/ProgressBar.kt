@@ -7,7 +7,7 @@ import javax.swing.JProgressBar
 import kotlin.reflect.KProperty0
 
 fun JProgressBar.bindValue(model: ObservableValue<Int>) {
-    autoReaction("JProgressBar.sync") {
+    autoRun("JProgressBar.sync") {
         value = model.value
     }
 }

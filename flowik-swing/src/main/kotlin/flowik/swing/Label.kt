@@ -7,25 +7,25 @@ import javax.swing.Icon
 import javax.swing.JLabel
 
 fun JLabel.bindText(obs: ObservableValue<String>) {
-    autoReaction("JLabel.text") {
+    autoRun("JLabel.text") {
         text = obs.value
     }
 }
 
 fun JLabel.bindText(comp: Computed<String>) {
-    autoReaction("JLabel.text") {
+    autoRun("JLabel.text") {
         text = comp.value
     }
 }
 
 fun JLabel.bindText(provider: () -> String) {
-    autoReaction("JLabel.text") {
+    autoRun("JLabel.text") {
         text = provider()
     }
 }
 
 fun JLabel.bindIcon(obs: ObservableValue<Icon?>) {
-    autoReaction("JLabel.icon") {
+    autoRun("JLabel.icon") {
         icon = obs.value
     }
 }

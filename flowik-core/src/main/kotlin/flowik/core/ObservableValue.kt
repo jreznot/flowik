@@ -61,7 +61,7 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
         // Snapshot to avoid ConcurrentModificationException
         for (tracker in observers.toList()) {
             when (tracker) {
-                is Reaction -> Tracking.schedule(tracker)
+                is Reaction<*> -> Tracking.schedule(tracker)
                 is AutoRun -> Tracking.schedule(tracker)
                 is When -> Tracking.schedule(tracker)
                 is Computed<*> -> tracker.invalidate()

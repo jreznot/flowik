@@ -44,23 +44,31 @@ fun <T : Any> observables(vararg items: T): ObservableMapList<T> =
 fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
 
 /**
- * Create and immediately run a reaction. Returns the [Reaction] so it can
- * be disposed later (e.g., when a component is removed from the hierarchy).
+ * Create a reaction with MobX-style semantics. Returns the [Disposable] so it
+ * can be disposed later (e.g., when a component is removed from the hierarchy).
+ *
+ * [dataTracker] is tracked — observables read inside it become dependencies.
+ * [effect] runs (receiving the current data value) whenever the tracked data
+ * changes. Does NOT fire on creation.
  */
-fun reaction(name: String? = null, effect: () -> Unit): Reaction {
-    val r = Reaction(name, effect)
+fun <T> reaction(
+    name: String? = null,
+    dataTracker: () -> T,
+    effect: (T) -> Unit
+): Disposable {
+    val r = Reaction(name, dataTracker, effect)
     r.run()
     return r
 }
 
 /**
  * Create and immediately run an [AutoRun] — the core equivalent of MobX's
- * `autorun`. The [effect] is executed synchronously on the current thread
- * and re-runs whenever any observed dependency changes.
- *
- * Returns the [AutoRun] so it can be [disposed][AutoRun.dispose] later.
+ * `autorun`. Returns the [Disposable] so it can be disposed later.
  */
-fun autoRun(name: String? = null, effect: () -> Unit): AutoRun {
+fun autoRun(
+    name: String? = null,
+    effect: () -> Unit
+): Disposable {
     val ar = AutoRun(name, effect)
     ar.run()
     return ar
@@ -77,7 +85,7 @@ fun autoRun(name: String? = null, effect: () -> Unit): AutoRun {
  * Returns the [When] (a [Disposable]) so callers can cancel the reaction
  * before the predicate ever becomes `true`.
  */
-fun whenThen(predicate: () -> Boolean, name: String? = null, effect: () -> Unit): When {
+fun whenThen(predicate: () -> Boolean, name: String? = null, effect: () -> Unit): Disposable {
     val w = When(name, predicate, effect)
     w.run()
     return w

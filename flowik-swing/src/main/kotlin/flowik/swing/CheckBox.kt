@@ -7,7 +7,7 @@ import javax.swing.JCheckBox
 
 fun JCheckBox.bindChecked(model: ObservableValue<Boolean>) {
     var updating = false
-    autoReaction("JCheckBox.sync") {
+    autoRun("JCheckBox.sync") {
         val current = model.value
         if (isSelected != current) {
             updating = true

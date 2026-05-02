@@ -11,7 +11,7 @@ fun <T> JComboBox<Any?>.bindItems(items: ObservableList<T>, selection: Observabl
     var updating = false
     val bindable = asBindableComponent()
 
-    bindable.autoReaction("JComboBox.items") {
+    bindable.autoRun("JComboBox.items") {
         updating = true
         val cbModel = DefaultComboBoxModel<Any?>()
         items.items.forEach { cbModel.addElement(it) }
@@ -19,7 +19,7 @@ fun <T> JComboBox<Any?>.bindItems(items: ObservableList<T>, selection: Observabl
         selectedItem = selection.value
         updating = false
     }
-    bindable.autoReaction("JComboBox.selection") {
+    bindable.autoRun("JComboBox.selection") {
         val current = selection.value
         if (selectedItem != current) {
             updating = true

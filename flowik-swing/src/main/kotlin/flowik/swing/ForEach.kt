@@ -55,7 +55,7 @@ fun <T> JPanel.bindItems(list: ObservableList<T>, map: (T) -> JComponent) {
 
 fun <T> JPanel.bindItems(computedList: Computed<List<T>>, map: (T) -> JComponent) {
     val children = mutableListOf<JComponent>()
-    autoReaction("JForEach.items") {
+    autoRun("JForEach.items") {
         children.clear()
         removeAll()
         for (item in computedList.value) {

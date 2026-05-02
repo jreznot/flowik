@@ -10,7 +10,7 @@ import javax.swing.event.DocumentListener
 
 fun JTextArea.bindValue(model: ObservableValue<String>) {
     var updating = false
-    autoReaction("JTextArea.sync") {
+    autoRun("JTextArea.sync") {
         val current = model.value
         if (text != current) {
             updating = true

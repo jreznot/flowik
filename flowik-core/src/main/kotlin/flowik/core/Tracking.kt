@@ -9,14 +9,14 @@ package flowik.core
  * tracking mechanism — the MobX-style "magic".
  */
 object Tracking {
-    /** Stack of currently-evaluating trackers (supports nesting). */
+    /** Stack of currently evaluating trackers (supports nesting). */
     private val stack = ThreadLocal.withInitial { ArrayDeque<Tracker>() }
 
     /** Action-batching depth counter. */
     private val batchDepth = ThreadLocal.withInitial { 0 }
 
     /** Pending reactions to notify when the outermost batch ends. */
-    private val pendingReactions = ThreadLocal.withInitial { linkedSetOf<Reaction>() }
+    private val pendingReactions = ThreadLocal.withInitial { linkedSetOf<Reaction<*>>() }
 
     /** Pending autoRuns to notify when the outermost batch ends. */
     private val pendingAutoRuns = ThreadLocal.withInitial { linkedSetOf<AutoRun>() }
@@ -29,7 +29,7 @@ object Tracking {
     fun push(tracker: Tracker) = stack.get().addLast(tracker)
     fun pop() = stack.get().removeLast()
 
-    // ── Batching (action scope) ──────────────────────────────────────
+    // Batching (action scope)
 
     fun beginBatch() {
         batchDepth.set(batchDepth.get() + 1)
@@ -45,7 +45,7 @@ object Tracking {
 
     val isBatching: Boolean get() = batchDepth.get() > 0
 
-    fun schedule(reaction: Reaction) {
+    fun schedule(reaction: Reaction<*>) {
         if (isBatching) {
             pendingReactions.get().add(reaction)
         } else {

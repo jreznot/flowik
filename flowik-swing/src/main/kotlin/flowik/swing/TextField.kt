@@ -19,7 +19,7 @@ class FixedColumnTextField(columns: Int = 20) : JTextField(columns) {
 
 fun JTextField.bindValue(model: ObservableValue<String>) {
     var updating = false
-    autoReaction("JTextField.sync") {
+    autoRun("JTextField.sync") {
         val current = model.value
         if (text != current) {
             updating = true

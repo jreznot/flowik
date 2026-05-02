@@ -11,7 +11,7 @@ fun <T> JPanel.bindSwitch(observe: () -> T, map: (T) -> JComponent) {
     var lastValue: Any? = Unset
     var currentChild: JComponent? = null
 
-    autoReaction("JPanel.switch") {
+    autoRun("JPanel.switch") {
         val value = observe()
         if (value != lastValue) {
             lastValue = value

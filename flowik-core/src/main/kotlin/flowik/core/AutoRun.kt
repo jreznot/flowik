@@ -2,9 +2,7 @@ package flowik.core
 
 /**
  * A side effect that re-runs automatically whenever its observed dependencies
- * change. Unlike [Reaction], which dispatches re-runs onto the Swing EDT,
- * [AutoRun] executes synchronously on the thread that triggers the change
- * (or when the outermost [action] batch completes).
+ * change.
  *
  * This is the flowik-core equivalent of MobX's `autorun`.
  */
