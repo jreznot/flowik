@@ -6,22 +6,18 @@ import flowik.layout.PanelScope
 import javax.swing.Icon
 import javax.swing.JLabel
 
-fun JLabel.bindText(obs: ObservableValue<String>) {
-    autoRun("JLabel.text") {
-        text = obs.value
-    }
-}
-
-fun JLabel.bindText(comp: Computed<String>) {
-    autoRun("JLabel.text") {
-        text = comp.value
-    }
-}
-
 fun JLabel.bindText(provider: () -> String) {
     autoRun("JLabel.text") {
         text = provider()
     }
+}
+
+fun JLabel.bindText(obs: ObservableValue<String>) {
+    bindText { obs.value }
+}
+
+fun JLabel.bindText(comp: Computed<String>) {
+    bindText { comp.value }
 }
 
 fun JLabel.bindIcon(obs: ObservableValue<Icon?>) {

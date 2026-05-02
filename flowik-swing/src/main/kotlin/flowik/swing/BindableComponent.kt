@@ -18,22 +18,23 @@ internal fun JComponent.onDetached(action: () -> Unit) {
     addPropertyChangeListener(listener)
 }
 
-interface FlowikBindableComponent {
+interface BindableComponent {
     /** Create an autoRun and register it for automatic disposal. */
     fun autoRun(name: String? = null, effect: () -> Unit): Disposable
 }
 
-fun JComponent.asBindableComponent(): FlowikBindableComponent = BindableComponentWrapper(this)
+fun JComponent.asBindableComponent(): BindableComponent = BindableComponentImpl(this)
 
 fun JComponent.autoRun(name: String? = null, effect: () -> Unit): Disposable =
     asBindableComponent().autoRun(name, effect)
 
-private class BindableComponentWrapper(val component: JComponent) : FlowikBindableComponent {
+private class BindableComponentImpl(val component: JComponent) : BindableComponent {
     init {
         if (component.getClientProperty(BINDABLE_KEY) == null) {
             component.putClientProperty(BINDABLE_KEY, this)
             component.onDetached {
                 removeNotify()
+                component.putClientProperty(BINDABLE_KEY, null)
             }
         }
     }
@@ -56,5 +57,9 @@ private class BindableComponentWrapper(val component: JComponent) : FlowikBindab
             it.dispose()
         }
         list.clear()
+    }
+
+    override fun toString(): String {
+        return "BindableComponent($component)"
     }
 }
