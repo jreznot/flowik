@@ -14,7 +14,6 @@ class AutoRun(
 ) : Tracker, Disposable {
 
     private val dependencies = mutableSetOf<ObservableValue<*>>()
-    private val computedDeps = mutableSetOf<Computed<*>>()
     private var isDisposed = false
 
     /** Run the effect, tracking dependencies. */
@@ -24,8 +23,6 @@ class AutoRun(
         // Unsubscribe from old dependencies
         dependencies.forEach { it.removeObserver(this) }
         dependencies.clear()
-        computedDeps.forEach { it.removeObserver(this) }
-        computedDeps.clear()
 
         // Execute and track
         Tracking.push(this)
@@ -43,21 +40,11 @@ class AutoRun(
             it.removeObserver(this)
         }
         dependencies.clear()
-        for (it in computedDeps) {
-            it.removeObserver(this)
-        }
-        computedDeps.clear()
     }
 
     override fun addDependency(observable: ObservableValue<*>) {
         dependencies.add(observable)
         observable.addObserver(this)
-    }
-
-    /** Also, track computed values so we can unsubscribe later. */
-    fun addComputedDependency(computed: Computed<*>) {
-        computedDeps.add(computed)
-        computed.addObserver(this)
     }
 
     override fun toString(): String = "AutoRun(${name ?: "anonymous"})"
