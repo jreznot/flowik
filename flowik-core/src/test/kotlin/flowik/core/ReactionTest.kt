@@ -9,7 +9,7 @@ class ReactionTest {
         val count = observable(0)
         var runCount = 0
 
-        reaction(dataTracker = { count.value }) { runCount++ }
+        reaction(supply = { count.value }) { runCount++ }
 
         assertEquals(0, runCount)
     }
@@ -19,7 +19,7 @@ class ReactionTest {
         val count = observable(0)
         val log = mutableListOf<Int>()
 
-        reaction(dataTracker = { count.value }) { log.add(it) }
+        reaction(supply = { count.value }) { log.add(it) }
 
         assertEquals(emptyList(), log)
 
@@ -35,7 +35,7 @@ class ReactionTest {
         val name = observable("Alice")
         var received = ""
 
-        reaction(dataTracker = { name.value }) { received = it }
+        reaction(supply = { name.value }) { received = it }
 
         name.value = "Bob"
         assertEquals("Bob", received)
@@ -46,7 +46,7 @@ class ReactionTest {
         val count = observable(0)
         val log = mutableListOf<Int>()
 
-        val r = reaction(dataTracker = { count.value }) { log.add(it) }
+        val r = reaction(supply = { count.value }) { log.add(it) }
 
         count.value = 1
         assertEquals(listOf(1), log)
@@ -62,7 +62,7 @@ class ReactionTest {
         val sideData = observable("initial")
         var effectRunCount = 0
 
-        reaction(dataTracker = { trigger.value }) {
+        reaction(supply = { trigger.value }) {
             effectRunCount++
             sideData.value // read inside effect — must NOT create a dependency
         }
@@ -81,7 +81,7 @@ class ReactionTest {
         val b = observable(2)
         var runCount = 0
 
-        reaction(dataTracker = { a.value + b.value }) { runCount++ }
+        reaction(supply = { a.value + b.value }) { runCount++ }
         assertEquals(0, runCount, "Must not fire on creation")
 
         action {
@@ -98,7 +98,7 @@ class ReactionTest {
         val b = observable("B")
         val log = mutableListOf<String>()
 
-        reaction(dataTracker = { if (toggle.value) a.value else b.value }) { log.add(it) }
+        reaction(supply = { if (toggle.value) a.value else b.value }) { log.add(it) }
 
         // Changing b should not trigger (not tracked while toggle=true)
         b.value = "B2"
@@ -119,13 +119,13 @@ class ReactionTest {
 
     @Test
     fun `name is reflected in toString`() {
-        val r = reaction("myReaction", dataTracker = { 0 }) {}
+        val r = reaction("myReaction", supply = { 0 }) {}
         assertEquals("Reaction(myReaction)", r.toString())
     }
 
     @Test
     fun `anonymous reaction toString`() {
-        val r = reaction(dataTracker = { 0 }) {}
+        val r = reaction(supply = { 0 }) {}
         assertEquals("Reaction(anonymous)", r.toString())
     }
 }

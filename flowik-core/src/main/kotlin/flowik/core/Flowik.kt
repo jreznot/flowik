@@ -46,16 +46,16 @@ fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
  * Create a reaction with MobX-style semantics. Returns the [Disposable] so it
  * can be disposed later (e.g., when a component is removed from the hierarchy).
  *
- * [dataTracker] is tracked — observables read inside it become dependencies.
+ * [supply] is tracked — observables read inside it become dependencies.
  * [effect] runs (receiving the current data value) whenever the tracked data
  * changes. Does NOT fire on creation.
  */
 fun <T> reaction(
     name: String? = null,
-    dataTracker: () -> T,
+    supply: () -> T,
     effect: (T) -> Unit
 ): Disposable {
-    val r = Reaction(name, dataTracker, effect)
+    val r = Reaction(name, supply, effect)
     r.run()
     return r
 }
@@ -75,7 +75,7 @@ fun autoRun(
 
 /**
  * Create and immediately evaluate a [When] — the core equivalent of MobX's
- * `when`.  The [predicate] is evaluated reactively; as soon as it returns
+ * `when`.  The [check] is evaluated reactively; as soon as it returns
  * `true`, the [effect] is executed **once** and the reaction auto-disposes.
  *
  * If the predicate is already `true` on the first evaluation, the effect
@@ -85,11 +85,11 @@ fun autoRun(
  * before the predicate ever becomes `true`.
  */
 fun whenThen(
-    predicate: () -> Boolean,
     name: String? = null,
+    check: () -> Boolean,
     effect: () -> Unit
 ): Disposable {
-    val w = When(name, predicate, effect)
+    val w = When(name, check, effect)
     w.run()
     return w
 }

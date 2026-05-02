@@ -11,7 +11,7 @@ class WhenTest {
         val flag = observable(true)
         var fired = false
 
-        whenThen({ flag.value }) { fired = true }
+        whenThen(check = { flag.value }) { fired = true }
 
         assertTrue(fired, "Effect should fire immediately when predicate is true")
     }
@@ -21,7 +21,7 @@ class WhenTest {
         val count = observable(0)
         var fired = false
 
-        whenThen({ count.value >= 3 }) { fired = true }
+        whenThen(check = { count.value >= 3 }) { fired = true }
 
         assertEquals(false, fired)
 
@@ -37,7 +37,7 @@ class WhenTest {
         val count = observable(0)
         var fireCount = 0
 
-        whenThen({ count.value >= 2 }) { fireCount++ }
+        whenThen(check = { count.value >= 2 }) { fireCount++ }
 
         count.value = 2
         assertEquals(1, fireCount)
@@ -53,7 +53,7 @@ class WhenTest {
         val count = observable(0)
         var fired = false
 
-        val w = whenThen({ count.value >= 5 }) { fired = true }
+        val w = whenThen(check = { count.value >= 5 }) { fired = true }
 
         count.value = 2
         assertEquals(false, fired)
@@ -71,7 +71,7 @@ class WhenTest {
         val total = computed { price.value + tax.value }
         var fired = false
 
-        whenThen({ total.value > 100 }) { fired = true }
+        whenThen(check = { total.value > 100 }) { fired = true }
 
         assertEquals(false, fired)
 
@@ -88,7 +88,7 @@ class WhenTest {
         val b = observable(0)
         var fired = false
 
-        whenThen({ a.value + b.value >= 10 }) { fired = true }
+        whenThen(check = { a.value + b.value >= 10 }) { fired = true }
 
         action {
             a.value = 3
@@ -99,13 +99,13 @@ class WhenTest {
 
     @Test
     fun `name is reflected in toString`() {
-        val w = whenThen({ false }, name = "myWhen") {}
+        val w = whenThen(check = { false }, name = "myWhen") {}
         assertEquals("When(myWhen)", w.toString())
     }
 
     @Test
     fun `anonymous when toString`() {
-        val w = whenThen({ false }) {}
+        val w = whenThen(check = { false }) {}
         assertEquals("When(anonymous)", w.toString())
     }
 }
