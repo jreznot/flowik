@@ -1,5 +1,6 @@
 package flowik.core
 
+import java.util.function.Supplier
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -20,7 +21,7 @@ import kotlin.reflect.KProperty
  * ```
  */
 class ObservableMapList<T : Any>(initial: List<T> = emptyList()) : ObservableList<ObservableMap<T>>(),
-    ReadWriteProperty<Any?, MutableList<T>> {
+    ReadWriteProperty<Any?, MutableList<T>>, Supplier<List<ObservableMap<T>>> {
 
     init {
         initial.forEach { super.add(ObservableMap(it)) }

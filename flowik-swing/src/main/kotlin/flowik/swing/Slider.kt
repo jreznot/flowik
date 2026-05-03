@@ -5,7 +5,7 @@ import flowik.core.action
 import flowik.layout.PanelScope
 import javax.swing.JSlider
 
-fun JSlider.bindValue(model: ObservableValue<Int>) {
+fun JSlider.value(model: ObservableValue<Int>) {
     var updating = false
     autoRun("JSlider.sync") {
         val current = model.value
@@ -21,4 +21,4 @@ fun JSlider.bindValue(model: ObservableValue<Int>) {
 }
 
 fun PanelScope.Slider(model: ObservableValue<Int>, min: Int = 0, max: Int = 100): JSlider =
-    JSlider(min, max).also { it.bindValue(model); panel.add(it) }
+    JSlider(min, max).also { it.value(model); panel.add(it) }

@@ -1,5 +1,6 @@
 package flowik.core
 
+import java.util.function.Supplier
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -10,7 +11,7 @@ import kotlin.reflect.KProperty
  * A [Computed] is both a [Tracker] (it observes other observables)
  * and behaves like an observable (reactions can depend on it).
  */
-class Computed<T>(private val compute: () -> T) : Tracker, Observable, ReadOnlyProperty<Any?, T> {
+class Computed<T>(private val compute: () -> T) : Tracker, Observable, ReadOnlyProperty<Any?, T>, Supplier<T> {
 
     private var cachedValue: T? = null
     private var isDirty = true
@@ -93,4 +94,6 @@ class Computed<T>(private val compute: () -> T) : Tracker, Observable, ReadOnlyP
     override fun getValue(thisRef: Any?, property: KProperty<*>): T {
         return value
     }
+
+    override fun get(): T = value
 }

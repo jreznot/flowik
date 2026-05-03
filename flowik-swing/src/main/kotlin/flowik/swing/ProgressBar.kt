@@ -6,7 +6,7 @@ import flowik.layout.PanelScope
 import javax.swing.JProgressBar
 import kotlin.reflect.KProperty0
 
-fun JProgressBar.bindValue(model: ObservableValue<Int>) {
+fun JProgressBar.value(model: ObservableValue<Int>) {
     autoRun("JProgressBar.sync") {
         value = model.value
     }
@@ -15,7 +15,7 @@ fun JProgressBar.bindValue(model: ObservableValue<Int>) {
 fun PanelScope.progressBar(model: ObservableValue<Int>, min: Int = 0, max: Int = 100): JProgressBar {
     return JProgressBar(min, max).also {
         it.isStringPainted = true
-        it.bindValue(model)
+        it.value(model)
         panel.add(it)
     }
 }

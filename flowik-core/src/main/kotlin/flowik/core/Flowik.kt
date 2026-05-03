@@ -112,3 +112,11 @@ fun <T> unwrapBinding(prop: KProperty0<T>): ObservableValue<T> {
     val delegate = prop.getDelegate() ?: throw IllegalArgumentException("Property must have a delegate")
     return delegate as ObservableValue<T>
 }
+
+fun not(value: ObservableValue<Boolean>): Computed<Boolean> = computed { !value.value }
+fun or(vararg values: ObservableValue<Boolean>): Computed<Boolean> = computed { values.any { it.value } }
+fun and(vararg values: ObservableValue<Boolean>): Computed<Boolean> = computed { values.all { it.value } }
+
+fun ObservableValue<Boolean>.toggle() {
+    value = !value
+}

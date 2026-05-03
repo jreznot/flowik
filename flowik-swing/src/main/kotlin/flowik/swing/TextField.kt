@@ -17,7 +17,7 @@ class FixedColumnTextField(columns: Int = 20) : JTextField(columns) {
     }
 }
 
-fun JTextField.bindValue(model: ObservableValue<String>) {
+fun JTextField.value(model: ObservableValue<String>) {
     var updating = false
     autoRun("JTextField.sync") {
         val current = model.value
@@ -39,7 +39,7 @@ fun JTextField.bindValue(model: ObservableValue<String>) {
 
 fun PanelScope.TextField(model: ObservableValue<String>, columns: Int = 20): JTextField {
     return FixedColumnTextField(columns).also {
-        it.bindValue(model)
+        it.value(model)
         panel.add(it)
     }
 }

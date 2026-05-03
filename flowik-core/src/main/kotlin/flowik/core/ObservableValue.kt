@@ -1,5 +1,6 @@
 package flowik.core
 
+import java.util.function.Supplier
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -9,7 +10,8 @@ import kotlin.reflect.KProperty
  * Reads are tracked automatically when a [Tracker] (reaction or computed) is
  * evaluating. Writes notify all tracked dependents.
  */
-class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWriteProperty<Any?, T>, Observable {
+class ObservableValue<T>(initial: T, private val name: String? = null)
+    : ReadWriteProperty<Any?, T>, Observable, Supplier<T> {
 
     private var _value: T = initial
 
@@ -71,4 +73,6 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : ReadWri
     }
 
     override fun toString(): String = "ObservableValue(${name ?: "?"}=$_value)"
+
+    override fun get(): T = value
 }

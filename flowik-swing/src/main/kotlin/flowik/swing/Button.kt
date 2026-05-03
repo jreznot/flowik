@@ -13,9 +13,3 @@ fun PanelScope.Button(label: String, onClick: () -> Unit): JButton {
         }
     }
 }
-
-fun JButton.bindEnabled(provider: () -> Boolean) {
-    autoRun("JButton.enabled") {
-        isEnabled = provider()
-    }
-}

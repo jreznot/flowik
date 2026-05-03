@@ -137,13 +137,13 @@ fun dataStoreAsyncDemo() {
                                 Button("Fetch") {
                                     store.fetch(appScope)
                                 }.apply {
-                                    bindEnabled { !store.fetch.isRunning.value }
+                                    enabled(not(store.fetch.isRunning))
                                 }
 
                                 Button("Cancel") {
                                     store.fetch.cancel()
                                 }.apply {
-                                    bindEnabled { store.fetch.isRunning.value }
+                                    enabled(store.fetch.isRunning)
                                 }
                             }
 

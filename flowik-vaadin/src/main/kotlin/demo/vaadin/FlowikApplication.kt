@@ -1,4 +1,4 @@
-package org.example.flowikvaadin
+package demo.vaadin
 
 import com.vaadin.flow.component.dependency.StyleSheet
 import com.vaadin.flow.component.page.AppShellConfigurator

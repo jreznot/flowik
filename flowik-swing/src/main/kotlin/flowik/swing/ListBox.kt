@@ -64,7 +64,7 @@ class ScrollableListBox<T> : JScrollPane() {
     }
 }
 
-fun <T> JList<T>.bindItems(source: ObservableList<T>) {
+fun <T> JList<T>.items(source: ObservableList<T>) {
     val currentModel = model as? ReactiveListModel<*>
     currentModel?.dispose()
 
@@ -74,9 +74,9 @@ fun <T> JList<T>.bindItems(source: ObservableList<T>) {
     onDetached { newModel.dispose() }
 }
 
-fun <T> JList<T>.bindItems(computed: Computed<List<T>>) {
+fun <T> JList<T>.items(computed: Computed<List<T>>) {
     val data = ObservableList<T>()
-    bindItems(data)
+    items(data)
     autoRun("JList.computed") {
         data.setAll(computed.value)
     }
@@ -84,14 +84,14 @@ fun <T> JList<T>.bindItems(computed: Computed<List<T>>) {
 
 fun <T> PanelScope.ListBox(data: ObservableList<T>): ScrollableListBox<T> {
     return ScrollableListBox<T>().also {
-        it.jList.bindItems(data)
+        it.jList.items(data)
         panel.add(it)
     }
 }
 
 fun <T> PanelScope.ListBox(computed: Computed<List<T>>): ScrollableListBox<T> {
     return ScrollableListBox<T>().also {
-        it.jList.bindItems(computed)
+        it.jList.items(computed)
         panel.add(it)
     }
 }

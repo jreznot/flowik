@@ -9,7 +9,7 @@ import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-fun <T> JPanel.bindItems(list: ObservableList<T>, map: (T) -> JComponent) {
+fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
     val children = mutableListOf<JComponent>()
     for (item in list.items) {
         val comp = map(item)
@@ -53,7 +53,7 @@ fun <T> JPanel.bindItems(list: ObservableList<T>, map: (T) -> JComponent) {
     onDetached { subscription.dispose() }
 }
 
-fun <T> JPanel.bindItems(computedList: Computed<List<T>>, map: (T) -> JComponent) {
+fun <T> JPanel.items(computedList: Computed<List<T>>, map: (T) -> JComponent) {
     val children = mutableListOf<JComponent>()
     autoRun("JForEach.items") {
         children.clear()
@@ -74,7 +74,7 @@ fun <T> PanelScope.ForEach(
     map: (T) -> JComponent
 ): JPanel = JPanel().also {
     it.layout = layout ?: BoxLayout(it, BoxLayout.Y_AXIS)
-    it.bindItems(list, map)
+    it.items(list, map)
     panel.add(it)
 }
 
@@ -84,6 +84,6 @@ fun <T> PanelScope.ForEach(
     map: (T) -> JComponent
 ): JPanel = JPanel().also {
     it.layout = layout ?: BoxLayout(it, BoxLayout.Y_AXIS)
-    it.bindItems(computedList, map)
+    it.items(computedList, map)
     panel.add(it)
 }

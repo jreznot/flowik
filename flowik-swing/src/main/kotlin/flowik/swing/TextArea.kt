@@ -8,7 +8,7 @@ import javax.swing.JTextArea
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 
-fun JTextArea.bindValue(model: ObservableValue<String>) {
+fun JTextArea.value(model: ObservableValue<String>) {
     var updating = false
     autoRun("JTextArea.sync") {
         val current = model.value
@@ -29,4 +29,4 @@ fun JTextArea.bindValue(model: ObservableValue<String>) {
 }
 
 fun PanelScope.TextArea(model: ObservableValue<String>, rows: Int = 4, cols: Int = 30): JTextArea =
-    JTextArea(rows, cols).also { it.bindValue(model); panel.add(JScrollPane(it)) }
+    JTextArea(rows, cols).also { it.value(model); panel.add(JScrollPane(it)) }

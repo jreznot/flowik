@@ -1,4 +1,4 @@
-package demo
+package demo.swing
 
 import com.formdev.flatlaf.FlatLightLaf
 import flowik.core.*
@@ -8,12 +8,17 @@ import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Font
+import java.awt.event.ActionEvent
 import java.awt.event.KeyEvent
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.*
 
 fun main() {
     todoDemo()
 }
+
+data class TodoItem(val text: String, val done: Boolean = false)
 
 class TodoStore {
     val todos = observables<TodoItem>()
@@ -48,8 +53,6 @@ class TodoStore {
     }
 }
 
-data class TodoItem(val text: String, val done: Boolean = false)
-
 /**
  * A JList-based to-do list with keyboard navigation.
  * Arrow keys navigate, Space toggles done, Delete/Backspace removes.
@@ -82,7 +85,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
         KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "toggleDone"
     )
     jList.actionMap.put("toggleDone", object : AbstractAction() {
-        override fun actionPerformed(e: java.awt.event.ActionEvent?) {
+        override fun actionPerformed(e: ActionEvent?) {
             jList.selectedValue?.let { store.toggleItem(it) }
         }
     })
@@ -95,7 +98,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
         KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "removeItem"
     )
     jList.actionMap.put("removeItem", object : AbstractAction() {
-        override fun actionPerformed(e: java.awt.event.ActionEvent?) {
+        override fun actionPerformed(e: ActionEvent?) {
             val idx = jList.selectedIndex
             val item = jList.selectedValue ?: return
             store.removeItem(item)
@@ -109,8 +112,8 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
     })
 
     // Mouse click on the checkbox region → toggle done, on ✕ region → remove
-    jList.addMouseListener(object : java.awt.event.MouseAdapter() {
-        override fun mouseClicked(e: java.awt.event.MouseEvent) {
+    jList.addMouseListener(object : MouseAdapter() {
+        override fun mouseClicked(e: MouseEvent) {
             val index = jList.locationToIndex(e.point)
             if (index < 0) return
             val cellBounds = jList.getCellBounds(index, index) ?: return
