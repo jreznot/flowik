@@ -2,7 +2,9 @@ package flowik.vaadin
 
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.HasEnabled
+import com.vaadin.flow.component.HasStyle
 import com.vaadin.flow.component.HasText
+import com.vaadin.flow.component.shared.HasTooltip
 import flowik.core.autoRun
 import java.util.function.Supplier
 
@@ -24,5 +26,23 @@ fun Component.visible(provider: Supplier<Boolean>) {
         if (isVisible != shouldBeVisible) {
             isVisible = shouldBeVisible
         }
+    }
+}
+
+fun HasStyle.className(provider: Supplier<String>) {
+    autoRun("HasStyle.className") {
+        className = provider.get()
+    }
+}
+
+fun HasStyle.classNames(provider: Supplier<List<String>>) {
+    autoRun("HasStyle.classNames") {
+        className = provider.get().joinToString(" ")
+    }
+}
+
+fun HasTooltip.tooltipText(provider: Supplier<String>) {
+    autoRun("HasTooltip.tooltipText") {
+        setTooltipText(provider.get())
     }
 }
