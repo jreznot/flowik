@@ -1,5 +1,8 @@
 # Flowik
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![team JetBrains project](https://jb.gg/badges/team.svg)](https://github.com/JetBrains#jetbrains-on-github)
+
 Flowik is a small Kotlin library that brings **MobX-style reactive state** to JVM UI toolkits.
 You define plain observable values and computed expressions; the UI subscribes itself and re-renders
 automatically when anything it reads changes — no listeners, no manual rebinding.
