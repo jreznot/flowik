@@ -2,6 +2,7 @@ package flowik.vaadin
 
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.HasEnabled
+import com.vaadin.flow.component.HasLabel
 import com.vaadin.flow.component.HasStyle
 import com.vaadin.flow.component.HasText
 import com.vaadin.flow.component.shared.HasTooltip
@@ -17,6 +18,12 @@ fun HasEnabled.enabled(provider: Supplier<Boolean>) {
 fun HasText.text(provider: Supplier<String>) {
     autoRun("HasText.text") {
         text = provider.get()
+    }
+}
+
+fun HasLabel.label(provider: Supplier<String>) {
+    autoRun("HasLabel.label") {
+        label = provider.get()
     }
 }
 

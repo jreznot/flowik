@@ -1,9 +1,13 @@
 package demo.vaadin
 
 import com.vaadin.flow.component.checkbox.Checkbox
+import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.H1
 import com.vaadin.flow.component.html.Hr
+import com.vaadin.flow.component.html.Paragraph
 import com.vaadin.flow.component.html.Span
+import com.vaadin.flow.component.icon.VaadinIcon
+import com.vaadin.flow.component.menubar.MenuBar
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
@@ -58,10 +62,31 @@ class TodoView : VerticalLayout() {
         store.addItem("Build Reaktor component library")
         store.addItem("Write unit tests")
 
+        isPadding = false
+        isSpacing = false
+        setSizeFull()
+        alignItems = FlexComponent.Alignment.CENTER
+        style.set("padding-top", "var(--lumo-space-m)")
+
+        add(buildMenuBar(), buildPanel())
+    }
+
+    private fun buildMenuBar(): MenuBar = MenuBar().apply {
+        width = "640px"
+        addItem("About") { showAboutDialog() }
+    }
+
+    private fun buildPanel(): VerticalLayout = VerticalLayout().apply {
+        width = "640px"
         isPadding = true
         isSpacing = true
-        setSizeFull()
-        maxWidth = "600px"
+        element.style.apply {
+            set("border", "1px solid var(--lumo-contrast-30pct, #c8ccd0)")
+            set("border-radius", "var(--lumo-border-radius-m, 6px)")
+            set("background-color", "var(--lumo-base-color, #ffffff)")
+            set("box-shadow", "0 1px 2px rgba(0, 0, 0, 0.06)")
+            set("box-sizing", "border-box")
+        }
 
         add(
             buildHeader(),
@@ -72,6 +97,25 @@ class TodoView : VerticalLayout() {
             Hr(),
             buildFooter()
         )
+    }
+
+    private fun showAboutDialog() {
+        val dialog = Dialog().apply {
+            headerTitle = "About"
+            width = "420px"
+            add(
+                Paragraph(
+                    "This is a small Todo demo built with Vaadin Flow and Reaktor — " +
+                            "a Kotlin reactive-state library inspired by MobX."
+                ),
+                Paragraph(
+                    "State lives in plain observables; the UI subscribes via autoRun " +
+                            "and rebinds itself whenever the observed values change."
+                )
+            )
+            footer.add(Button("Close") { close() })
+        }
+        dialog.open()
     }
 
     private fun buildHeader(): HorizontalLayout = HorizontalLayout().apply {
@@ -85,10 +129,9 @@ class TodoView : VerticalLayout() {
 
         val spacer = Span().apply { element.style.set("flex-grow", "1") }
 
-        val toggle = Button("v") {
-            store.showFilter.toggle()
-        }
-        toggle.element.setAttribute("title", "Toggle filter")
+        val toggle = Button("") { store.showFilter.toggle() }
+        toggle.text { if (store.showFilter.value) "Hide filter" else "Show filter" }
+        toggle.icon { if (store.showFilter.value) VaadinIcon.CHEVRON_UP else VaadinIcon.CHEVRON_DOWN }
 
         add(title, spacer, toggle)
     }
