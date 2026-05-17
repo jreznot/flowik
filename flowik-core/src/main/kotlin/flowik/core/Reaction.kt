@@ -2,15 +2,15 @@ package flowik.core
 
 /**
  * A side effect with MobX-style reaction semantics.
- *
- * [dataTracker] is evaluated with tracking — its observable reads become dependencies.
+
+ * [supply] is evaluated with tracking — its observable reads become dependencies.
  * [effect] receives the current value and runs whenever tracked data changes.
  * [effect] is NOT tracked; observables read inside it do not become dependencies.
- * Does NOT fire on creation — only on subsequent dependency changes.
+ * Does NOT fire on creation — only on later dependency changes.
  */
 class Reaction<T>(
     private val name: String? = null,
-    private val dataTracker: () -> T,
+    private val supply: () -> T,
     private val effect: (T) -> Unit
 ) : Tracker, Disposable {
 
@@ -27,7 +27,7 @@ class Reaction<T>(
         Tracking.push(this)
         val data: T
         try {
-            data = dataTracker()
+            data = supply()
         } finally {
             Tracking.pop()
         }

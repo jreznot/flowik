@@ -40,7 +40,7 @@ class TodoStore {
     fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
 
     fun toggleItem(item: ObservableMap<TodoItem>) = action {
-        item[TodoItem::done].value = !item[TodoItem::done].value
+        item[TodoItem::done].toggle()
     }
 
     fun clearCompleted() = action {
@@ -82,16 +82,15 @@ class TodoView : VerticalLayout() {
             style.set("margin", "0")
             style.set("font-size", "var(--lumo-font-size-xxl)")
         }
-        add(title)
 
         val spacer = Span().apply { element.style.set("flex-grow", "1") }
-        add(spacer)
 
         val toggle = Button("v") {
             store.showFilter.toggle()
         }
         toggle.element.setAttribute("title", "Toggle filter")
-        add(toggle)
+
+        add(title, spacer, toggle)
     }
 
     private fun buildFilterPanel(): HorizontalLayout = HorizontalLayout().apply {
