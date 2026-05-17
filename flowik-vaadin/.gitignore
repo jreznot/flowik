@@ -3,12 +3,3 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-
-src/main/frontend/node_modules/
-src/main/frontend/generated/
-src/main/frontend/pnpmfile.js
-src/main/frontend/.npmrc
-src/main/frontend/webpack.generated.js
-src/main/frontend/vite.generated.ts
-
-index.html

@@ -1,15 +1,20 @@
 plugins {
+    kotlin("plugin.spring") version "2.3.21"
+    id("org.springframework.boot") version "4.0.6"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.vaadin") version "25.1.4"
 }
 
 extra["vaadinVersion"] = "25.1.4"
 
 dependencies {
-    api(project(":flowik-core"))
-    api("com.vaadin:vaadin-core")
+    implementation(project(":flowik-vaadin"))
+    developmentOnly("com.vaadin:vaadin-dev")
+    implementation("com.vaadin:vaadin-spring-boot-starter")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -24,4 +29,8 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
     }
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
