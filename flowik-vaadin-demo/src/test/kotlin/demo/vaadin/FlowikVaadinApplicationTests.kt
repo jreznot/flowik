@@ -1,4 +1,4 @@
-package org.example.flowikvaadin
+package demo.vaadin
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
