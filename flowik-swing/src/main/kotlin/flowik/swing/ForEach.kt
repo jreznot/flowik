@@ -1,10 +1,10 @@
 package flowik.swing
 
-import flowik.core.Computed
 import flowik.core.ListChange
 import flowik.core.ObservableList
 import flowik.layout.PanelScope
 import java.awt.LayoutManager
+import java.util.function.Supplier
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -53,12 +53,12 @@ fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
     onDetached { subscription.dispose() }
 }
 
-fun <T> JPanel.items(computedList: Computed<List<T>>, map: (T) -> JComponent) {
+fun <T> JPanel.items(computedList: Supplier<List<T>>, map: (T) -> JComponent) {
     val children = mutableListOf<JComponent>()
     autoRun("JForEach.items") {
         children.clear()
         removeAll()
-        for (item in computedList.value) {
+        for (item in computedList.get()) {
             val comp = map(item)
             children.add(comp)
             add(comp)
@@ -79,7 +79,7 @@ fun <T> PanelScope.ForEach(
 }
 
 fun <T> PanelScope.ForEach(
-    computedList: Computed<List<T>>,
+    computedList: Supplier<List<T>>,
     layout: LayoutManager? = null,
     map: (T) -> JComponent
 ): JPanel = JPanel().also {

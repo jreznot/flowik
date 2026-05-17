@@ -20,22 +20,23 @@ import flowik.vaadin.*
 data class TodoItem(val text: String, val done: Boolean = false)
 
 class TodoStore {
-    val todos = observables<TodoItem>()
-    val filter = observable("", name = "filter")
-    val showCompleted = observable(true, name = "showCompleted")
-    val showFilter = observable(false, name = "showFilter")
+    private val todos = observables<TodoItem>()
 
-    val visibleItems = todos.filter { item: ObservableMap<TodoItem> ->
-        val filterText = filter.value.lowercase()
-        (showCompleted.value || !item[TodoItem::done].value)
+    var filter by observable("", name = "filter")
+    var showCompleted by observable(true, name = "showCompleted")
+    var showFilter by observable(false, name = "showFilter")
+
+    val visibleItems by todos.filter { item: ObservableMap<TodoItem> ->
+        val filterText = filter.lowercase()
+        (showCompleted || !item[TodoItem::done].value)
                 && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
     }
 
-    private val doneTodos = todos.filter { it[TodoItem::done].value }
+    private val doneTodos by todos.filter { it[TodoItem::done].value }
 
-    val totalCount = computed { todos.size }
-    val doneCount = computed { doneTodos.value.size }
-    val statusText = computed { "${doneCount.value} / ${totalCount.value} completed" }
+    val totalCount by computed { todos.size }
+    val doneCount by computed { doneTodos.size }
+    val statusText by computed { "$doneCount / $totalCount completed" }
 
     fun addItem(text: String) = action {
         if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
@@ -43,12 +44,8 @@ class TodoStore {
 
     fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
 
-    fun toggleItem(item: ObservableMap<TodoItem>) = action {
-        item[TodoItem::done].toggle()
-    }
-
     fun clearCompleted() = action {
-        doneTodos.value.forEach { todos.remove(it) }
+        doneTodos.forEach { todos.remove(it) }
     }
 }
 
@@ -129,9 +126,9 @@ class TodoView : VerticalLayout() {
 
         val spacer = Span().apply { element.style.set("flex-grow", "1") }
 
-        val toggle = Button("") { store.showFilter.toggle() }
-        toggle.text { if (store.showFilter.value) "Hide filter" else "Show filter" }
-        toggle.icon { if (store.showFilter.value) VaadinIcon.CHEVRON_UP else VaadinIcon.CHEVRON_DOWN }
+        val toggle = Button("") { store.showFilter = !store.showFilter }
+        toggle.text { if (store.showFilter) "Hide filter" else "Show filter" }
+        toggle.icon { if (store.showFilter) VaadinIcon.CHEVRON_UP else VaadinIcon.CHEVRON_DOWN }
 
         add(title, spacer, toggle)
     }
@@ -141,13 +138,13 @@ class TodoView : VerticalLayout() {
         isPadding = false
 
         val label = Span("Filter:")
-        val filterField = TextField().apply { value(store.filter) }
+        val filterField = TextField().apply { value(store::filter) }
         val showCompletedCb = Checkbox("Show completed").apply {
-            checked(store.showCompleted)
+            checked(store::showCompleted)
         }
 
         add(label, filterField, showCompletedCb)
-        visible(store.showFilter)
+        visible(store::showFilter)
     }
 
     private fun buildTodoList(): VerticalLayout = VerticalLayout().apply {
@@ -155,7 +152,7 @@ class TodoView : VerticalLayout() {
         isSpacing = false
         setWidthFull()
 
-        items(store.visibleItems) {
+        items(store::visibleItems) {
             todoRow(it)
         }
     }
@@ -210,7 +207,7 @@ class TodoView : VerticalLayout() {
         setWidthFull()
         alignItems = FlexComponent.Alignment.CENTER
 
-        val status = Span().apply { text(store.statusText) }
+        val status = Span().apply { text(store::statusText) }
         add(status)
 
         val spacer = Span().apply { element.style.set("flex-grow", "1") }

@@ -3,6 +3,8 @@ package flowik.vaadin
 import com.vaadin.flow.component.checkbox.Checkbox
 import flowik.core.ObservableValue
 import flowik.core.action
+import flowik.core.unwrapBinding
+import kotlin.reflect.KProperty0
 
 fun Checkbox.checked(model: ObservableValue<Boolean>) {
     autoRun("Checkbox.value") {
@@ -16,4 +18,8 @@ fun Checkbox.checked(model: ObservableValue<Boolean>) {
             action { model.value = event.value }
         }
     }
+}
+
+fun Checkbox.checked(prop: KProperty0<Boolean>) {
+    checked(unwrapBinding(prop))
 }

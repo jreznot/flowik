@@ -2,9 +2,9 @@ package flowik.vaadin
 
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.HasComponents
-import flowik.core.Computed
 import flowik.core.ListChange
 import flowik.core.ObservableList
+import java.util.function.Supplier
 
 fun <T, L> L.items(list: ObservableList<T>, map: (T) -> Component)
         where L : Component, L : HasComponents {
@@ -45,11 +45,11 @@ fun <T, L> L.items(list: ObservableList<T>, map: (T) -> Component)
     onDetached { subscription.dispose() }
 }
 
-fun <T, L> L.items(computedList: Computed<List<T>>, map: (T) -> Component)
+fun <T, L> L.items(computedList: Supplier<List<T>>, map: (T) -> Component)
         where L : Component, L : HasComponents {
     autoRun("VForEach.items") {
         removeAll()
-        for (item in computedList.value) {
+        for (item in computedList.get()) {
             add(map(item))
         }
     }
