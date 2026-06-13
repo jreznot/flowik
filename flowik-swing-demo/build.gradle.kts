@@ -4,7 +4,8 @@ plugins {
 
 dependencies {
     implementation(project(":flowik-swing"))
-    implementation("com.formdev:flatlaf:3.5.4")
+    implementation("com.formdev:flatlaf:3.7.1")
+    implementation("com.formdev:flatlaf-intellij-themes:3.7.1")
 }
 
 application {
