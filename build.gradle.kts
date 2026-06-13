@@ -8,10 +8,6 @@ allprojects {
     group = "com.github.jreznot.flowik"
     version = (findProperty("version") as String?)?.takeUnless { it == "unspecified" }
         ?: "0.1.0-SNAPSHOT"
-
-    repositories {
-        mavenCentral()
-    }
 }
 
 subprojects {
