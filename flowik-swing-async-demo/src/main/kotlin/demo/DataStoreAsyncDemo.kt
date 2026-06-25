@@ -13,25 +13,30 @@ import kotlinx.coroutines.withContext
 import java.awt.Font
 import javax.swing.SwingUtilities
 
+fun main() {
+    dataStoreAsyncDemo()
+}
+
 data class Planet(val name: String, val distanceAu: Double, val moons: Int)
 
 private val CATALOGUE = listOf(
-    Planet("Mercury", 0.39,  0),
-    Planet("Venus",   0.72,  0),
-    Planet("Earth",   1.00,  1),
-    Planet("Mars",    1.52,  2),
+    Planet("Mercury", 0.39, 0),
+    Planet("Venus", 0.72, 0),
+    Planet("Earth", 1.00, 1),
+    Planet("Mars", 1.52, 2),
     Planet("Jupiter", 5.20, 95),
-    Planet("Saturn",  9.58, 146),
-    Planet("Uranus",  19.2, 28),
+    Planet("Saturn", 9.58, 146),
+    Planet("Uranus", 19.2, 28),
     Planet("Neptune", 30.1, 16),
 )
 
 class PlanetStore {
-    val query    by observable("", name = "query")
-    var progress by observable(0,  name = "progress")
+    val query by observable("", name = "query")
+    var progress by observable(0, name = "progress")
     var errorMsg by observable("", name = "errorMsg")
 
-    val results  = observables<Planet>()
+    val results = observables<Planet>()
+
     // Display list — recomputes whenever results change
     val displayItems: Computed<List<String>> = results.mapValues { p ->
         "%-10s  %5.2f AU   %d moon%s".format(p.name, p.distanceAu, p.moons, if (p.moons == 1) "" else "s")
@@ -41,12 +46,16 @@ class PlanetStore {
         when {
             fetch.isRunning.value && progress == 0 ->
                 "Connecting to solar catalogue…"
+
             fetch.isRunning.value ->
                 "Fetching — ${progress}% complete"
+
             errorMsg.isNotEmpty() ->
                 "Error: $errorMsg"
+
             results.size > 0 ->
                 "${results.size} planet(s) found"
+
             else ->
                 "Ready — enter a query and press Fetch (type \"error\" to simulate a failure)"
         }
@@ -79,9 +88,9 @@ class PlanetStore {
             if (q == "error") error("HTTP 503 — solar catalogue unavailable")
 
             val matching = CATALOGUE.filter { q.isEmpty() || it.name.lowercase().contains(q) }
-            val mid      = (matching.size + 1) / 2
-            val first    = matching.take(mid)
-            val second   = matching.drop(mid)
+            val mid = (matching.size + 1) / 2
+            val first = matching.take(mid)
+            val second = matching.drop(mid)
 
             // 3. First page — IO delay, then runInAction pushes results back to EDT
             withContext(Dispatchers.IO) { Thread.sleep(600) }
@@ -109,7 +118,7 @@ fun dataStoreAsyncDemo() {
     SwingUtilities.invokeLater {
         FlatLightLaf.setup()
 
-        val store    = PlanetStore()
+        val store = PlanetStore()
         val appScope = MainScope()
 
         uiFrame("Planet Explorer — Async Demo", width = 580, height = 500) {
@@ -169,8 +178,4 @@ fun dataStoreAsyncDemo() {
             }
         }
     }
-}
-
-fun main() {
-    dataStoreAsyncDemo()
 }
