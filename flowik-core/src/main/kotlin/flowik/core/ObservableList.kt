@@ -123,6 +123,17 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Obse
 
     private fun bumpVersion() {
         version.value = version.untrackedValue + 1
+        notifySubscribers()
+    }
+
+    /**
+     * Notifies [subscribe] listeners *without* bumping the version, i.e. without
+     * invalidating reactions that read the list contents.
+     *
+     * For changes that happen inside an element rather than to the list itself —
+     * what [ObservableMapList] forwards from its element wrappers.
+     */
+    protected fun notifySubscribers() {
         subscribers.toList().forEach { it.onChange() }
     }
 

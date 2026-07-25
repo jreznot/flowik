@@ -8,8 +8,7 @@ package flowik.core
  * notified.
  *
  * Used by the atoms and derivations created with [observableRef],
- * [observableStruct], [observableWith], [computedStruct], [computedRef] and
- * [computedWith].
+ * [observableStruct], [computedStruct], [computedRef].
  */
 fun interface Comparer<in T> {
 

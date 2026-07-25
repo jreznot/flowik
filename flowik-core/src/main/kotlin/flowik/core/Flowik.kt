@@ -29,7 +29,13 @@ fun observable(initial: LocalDateTime, name: String? = null): ObservableValue<Lo
 // Any type not matched by the overloads above (data classes, domain objects, etc.)
 // is wrapped in an ObservableMap, exposing each property as an individual ObservableValue.
 
-/** Wrap an arbitrary [T] instance, exposing each property as an [ObservableValue]. */
+/**
+ * Wrap an arbitrary [T] instance, exposing each property as an [ObservableValue].
+ *
+ * Decomposition is one level deep by default. Nested objects and lists of
+ * objects are decomposed on demand with [ObservableMap.nested] and
+ * [ObservableMap.nestedList], which compose to any depth.
+ */
 fun <T : Any> observable(initial: T): ObservableMap<T> = ObservableMap(initial)
 
 /** Explicit alias — prefer [observable] for brevity. */

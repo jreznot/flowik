@@ -35,10 +35,10 @@ class PlanetStore {
     var progress by observable(0, name = "progress")
     var errorMsg by observable("", name = "errorMsg")
 
-    val results = observables<Planet>()
+    val results = observablesShallow<Planet>()
 
     // Display list — recomputes whenever results change
-    val displayItems: Computed<List<String>> = results.mapValues { p ->
+    val displayItems: Computed<List<String>> = results.map { p ->
         "%-10s  %5.2f AU   %d moon%s".format(p.name, p.distanceAu, p.moons, if (p.moons == 1) "" else "s")
     }
 

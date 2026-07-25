@@ -168,6 +168,66 @@ action {                                       // batch — derivations fire onc
 }
 ```
 
+### Deep state: nested objects and lists
+
+`observable(obj)` decomposes one level: every property becomes its own atom. When a property holds
+another object — or a list of them — you decide whether it stays atomic or gets decomposed in turn:
+
+```kotlin
+data class Address(val city: String, val zip: String)
+data class Member(val name: String, val active: Boolean = true)
+data class Team(val name: String, val address: Address, val members: List<Member>, val tags: List<String>)
+
+val team = observable(Team("A-Team", Address("Munich", "80331"), listOf(Member("Alice")), listOf("core")))
+
+team[Team::name]                    // ObservableValue<String>  — scalar atom
+team[Team::address]                 // ObservableValue<Address>  — the whole object in one atom
+team[Team::tags]                    // ObservableList<String>    — reactive list of plain values
+
+team.nested(Team::address)          // ObservableMap<Address>    — city and zip are separate atoms
+team.nestedList(Team::members)      // ObservableMapList<Member> — each element is an ObservableMap
+```
+
+`nested` / `nestedList` compose, so a tree of any depth is reachable, and typed paths keep the common
+cases on one line:
+
+```kotlin
+team.nested(Team::address)[Address::city].value = "Berlin"
+team[Team::address, Address::city].value = "Berlin"       // the same atom, via a typed path
+// paths take up to three steps: company[Company::team, Team::address, Address::city]
+
+val alice = team.nestedList(Team::members)[0]
+alice[Member::active].value = false                       // fine-grained: only active-readers re-run
+```
+
+Deep access is explicit rather than automatic because a property's type cannot tell the compiler
+whether it holds a value to keep atomic or an object to decompose — `KProperty1<T, Address>` and
+`KProperty1<T, String>` look the same to overload resolution. It is the same deep/shallow pair the
+top-level factories already offer (`observables` vs `observablesShallow`).
+
+Two rules follow from the containers being created lazily and cached:
+
+- **One access pattern per property.** A field is exposed through exactly one container; asking for
+  `team[Team::address]` after `team.nested(Team::address)` fails with an `IllegalStateException`
+  rather than handing out two independent copies of the same state.
+- **`value` is the original snapshot.** Writes go into the containers, not back into the wrapped
+  instance, so read current state through the containers — `team.value.address.city` stays as it was.
+
+Reactions stay as fine-grained as the atom they read, at any depth. `subscribe` works the other way
+round: a change anywhere in the tree — including inside a list element — is forwarded up to the root's
+subscribers. Element property changes deliberately do *not* invalidate readers of a list's *contents*;
+a reaction that must re-run on them reads the element property itself:
+
+```kotlin
+val activeNames = team.nestedList(Team::members)
+    .filter { it[Member::active].value }      // property-reactive, because the predicate reads the atom
+    .map { it[Member::name].value }
+```
+
+Nullable object properties (`Address?`) have nothing to decompose, so they are rejected at compile time
+— keep them atomic with `get(...)`. A `Map`-typed property stays atomic too: the core has no keyed
+reactive container to decompose it into.
+
 ### Sets: `observableSet`
 
 The equivalent of MobX's `observable.set` — a reactive, insertion-ordered set. Every read

@@ -57,28 +57,3 @@ fun <T> ReadableObservable<List<T>>.filter(predicate: (T) -> Boolean): Computed<
  */
 fun <T, R> ReadableObservable<List<T>>.flatMap(transform: (T) -> Iterable<R>): Computed<List<R>> =
     computed { value.flatMap(transform) }
-
-// Named *Values (not map/filter/flatMap) to avoid overload-resolution ambiguity:
-// when both an ObservableMapList<T> and ObservableList<T> extension produce the same
-// Computed<List<R>>, Kotlin cannot pick the right overload even with an explicit
-// lambda parameter type annotation.
-//
-// filterValues returns Computed<List<ObservableMap<T>>> so callers can still reach
-// reactive properties on the results (item[Foo::bar].value in the UI layer).
-//
-// These are list-reactive only — the derived re-evaluates when items are added
-// or removed, but NOT when individual properties of an existing item change.
-// For property-reactive predicates use the ObservableList overload and read
-// item[Prop::name].value inside the lambda.
-
-/** Returns a [Computed] list of [ObservableMap] wrappers whose unboxed value satisfies [predicate]. */
-fun <T : Any> ObservableMapList<T>.filterValues(predicate: (T) -> Boolean): Computed<List<ObservableMap<T>>> =
-    computed { items.filter { predicate(it.value) } }
-
-/** Returns a [Computed] list where each unboxed element has been transformed by [transform]. */
-fun <T : Any, R> ObservableMapList<T>.mapValues(transform: (T) -> R): Computed<List<R>> =
-    computed { items.map { transform(it.value) } }
-
-/** Returns a [Computed] list where each unboxed element is expanded by [transform] and flattened. */
-fun <T : Any, R> ObservableMapList<T>.flatMapValues(transform: (T) -> Iterable<R>): Computed<List<R>> =
-    computed { items.flatMap { transform(it.value) } }
