@@ -22,7 +22,7 @@ import kotlin.reflect.KProperty
  * once at the end of the batch. Reading [value] inside the batch refreshes
  * on demand, so a read never observes a stale result.
  *
- * Internal: reach it through [computedStruct], [computedRef] or [computedWith],
+ * Internal: reach it through [computedStruct], [computedRef],
  * all of which hand back a [DisposableObservable].
  */
 internal class PolicyComputed<T>(

@@ -71,6 +71,10 @@ fun <T> observableStruct(initial: T, name: String? = null): MutableObservable<T>
 fun <T : Any> observables(vararg items: T): ObservableMapList<T> =
     ObservableMapList(items.toList())
 
+/** Create an [ObservableList] pre-populated with [items]. */
+fun <T : Any> observablesShallow(vararg items: T): ObservableList<T> =
+    ObservableList(items.toList())
+
 /** Create a computed (derived) value with auto-tracking. */
 fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
 

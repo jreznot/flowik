@@ -41,7 +41,7 @@ class PolicyComputedTest {
 
     @Test
     fun `computedStruct compares list results structurally`() {
-        val source = ObservableList(listOf("a", "b"))
+        val source = observablesShallow("a", "b")
         val sorted = computedStruct { source.items.sorted() }
         var runs = 0
 
@@ -145,7 +145,7 @@ class PolicyComputedTest {
 
     @Test
     fun `derived list ops compose on a policy computed`() {
-        val source = ObservableList(listOf(1, 2, 3, 4))
+        val source = observablesShallow(1, 2, 3, 4)
         val evens = computedStruct { source.items.filter { it % 2 == 0 } }
         val labels = evens.map { "n$it" }
 
