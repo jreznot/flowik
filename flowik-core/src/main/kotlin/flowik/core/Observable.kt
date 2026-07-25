@@ -4,7 +4,7 @@ package flowik.core
  * A reactive source that notifies [Observer] subscribers when its value changes.
  *
  * Implemented by [ObservableValue], [Computed], [ObservableList],
- * [ObservableMap], and [ObservableMapList].
+ * [ObservableSet], [ObservableMap], and [ObservableMapList].
  */
 interface Observable {
 

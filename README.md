@@ -27,7 +27,7 @@ Flowik is directly inspired by [MobX](https://mobx.js.org/). The core idea, in o
 In practice this means three building blocks:
 
 - **Observable state** — mutable values that *track who reads them*.
-  Created with `observable(...)`, `observableMap(...)`, `observables(...)`.
+  Created with `observable(...)`, `observableMap(...)`, `observables(...)`, `observableSet(...)`.
 - **Derivations** — pure functions over observables.
   Either `computed { ... }` for cached values or `autoRun { ... }` for side effects (typically UI updates).
   Both are *self-wiring*: they re-evaluate when — and only when — something they read has changed.
@@ -154,6 +154,7 @@ From `flowik-core`:
 val name    = observable("Alice")              // ObservableValue<String>
 val person  = observable(Person("Bob", 30))    // ObservableMap<Person> — each property reactive
 val items   = observables<TodoItem>()          // ObservableMapList<TodoItem>
+val roles   = observableSet("admin")           // ObservableSet<String>
 
 val greeting = computed { "Hello, ${name.value}" }
 
@@ -166,6 +167,40 @@ action {                                       // batch — derivations fire onc
     person[Person::age].value = 31
 }
 ```
+
+### Sets: `observableSet`
+
+The equivalent of MobX's `observable.set` — a reactive, insertion-ordered set. Every read
+(`items`, `size`, `isEmpty()`, `in`, iteration) auto-tracks, and only mutations that really change
+the contents notify anybody:
+
+```kotlin
+val selection = observableSet<String>()
+
+autoRun { println("selected ${selection.size}, alice in: ${"alice" in selection}") }
+
+selection.add("alice")            // fires
+selection.add("alice")            // duplicate — nobody is notified
+selection.toggle("alice")         // removes it, fires
+selection.setAll(listOf("bob"))   // replace wholesale, one notification
+
+val upperNames = selection.map { it.uppercase() }        // Computed<List<String>>
+val shortNames = selection.filterToSet { it.length < 4 } // Computed<Set<String>>
+```
+
+`addAll` / `removeAll` / `setAll` batch internally, so a bulk change re-runs dependents once. It also
+works as a property delegate, handing out a plain `MutableSet` view whose mutations stay reactive:
+
+```kotlin
+class Store {
+    var tags: MutableSet<String> by observableSet("new")
+}
+```
+
+Elements are stored as plain values (a shallow container — there is no `ObservableMap`-wrapping
+variant, since hashing would key each element on its initial snapshot). For a keyed reactive
+collection use `observables(...)`. Fine-grained `SetChange.Add` / `Remove` / `Clear` events are
+available through `onChange { }`, mirroring `ObservableList`.
 
 ### Change detection: `ref` and `struct`
 

@@ -75,6 +75,15 @@ fun <T : Any> observables(vararg items: T): ObservableMapList<T> =
 fun <T : Any> observablesShallow(vararg items: T): ObservableList<T> =
     ObservableList(items.toList())
 
+/**
+ * Create an [ObservableSet] pre-populated with [items] — MobX's `observable.set`.
+ *
+ * Duplicates collapse on creation, as in any set. To start from an existing
+ * collection, use the constructor: `ObservableSet(roles)`.
+ */
+fun <T> observableSet(vararg items: T): ObservableSet<T> =
+    ObservableSet(items.toList())
+
 /** Create a computed (derived) value with auto-tracking. */
 fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
 
