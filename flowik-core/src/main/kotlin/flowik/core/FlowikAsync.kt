@@ -72,9 +72,10 @@ class FlowAction(
      * Cancel the previous run (if any) and start a new one under [scope].
      * Returns the new [Job] so callers can `join()` or await cancellation.
      */
-    operator fun invoke(scope: CoroutineScope): Job {
+    context(viewScope: CoroutineScope)
+    operator fun invoke(): Job {
         currentJob?.cancel()
-        return scope.launch(context) {
+        return viewScope.launch(context) {
             _isRunning.value = true
             try {
                 block()

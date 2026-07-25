@@ -119,62 +119,64 @@ fun dataStoreAsyncDemo() {
         FlatLightLaf.setup()
 
         val store = PlanetStore()
-        val appScope = MainScope()
+        val viewScope = MainScope()
 
-        uiFrame("Planet Explorer — Async Demo", width = 580, height = 500) {
-            north {
-                vbox(gap = 2) {
-                    Label("Planet Explorer").apply {
-                        font = Font("SansSerif", Font.BOLD, 20)
-                    }
-                    Label("Demonstrates flowAction · runInAction · cancellation").apply {
-                        font = Font("SansSerif", Font.ITALIC, 11)
-                    }
-                }
-            }
-
-            center {
-                borderPanel(gap = 6) {
-                    north {
-                        vbox(gap = 4) {
-                            hbox(gap = 6) {
-                                Label("Query:")
-                                TextField(store::query, columns = 18)
-                                spacer(width = 4)
-
-                                // Re-invoking while running cancels the previous fetch automatically.
-                                Button("Fetch") {
-                                    store.fetch(appScope)
-                                }.apply {
-                                    enabled(not(store.fetch.isRunning))
-                                }
-
-                                Button("Cancel") {
-                                    store.fetch.cancel()
-                                }.apply {
-                                    enabled(store.fetch.isRunning)
-                                }
-                            }
-
-                            Panel(visible = store.fetch.isRunning) {
-                                progressBar(store::progress)
-                            }
-
-                            Label(store.statusText)
-
-                            separator()
+        context(viewScope) {
+            uiFrame("Planet Explorer — Async Demo", width = 580, height = 500) {
+                north {
+                    vbox(gap = 2) {
+                        Label("Planet Explorer").apply {
+                            font = Font("SansSerif", Font.BOLD, 20)
+                        }
+                        Label("Demonstrates flowAction · runInAction · cancellation").apply {
+                            font = Font("SansSerif", Font.ITALIC, 11)
                         }
                     }
+                }
 
-                    center {
-                        ListBox(store.displayItems)
+                center {
+                    borderPanel(gap = 6) {
+                        north {
+                            vbox(gap = 4) {
+                                hbox(gap = 6) {
+                                    Label("Query:")
+                                    TextField(store::query, columns = 18)
+                                    spacer(width = 4)
+
+                                    // Re-invoking while running cancels the previous fetch automatically.
+                                    Button("Fetch") {
+                                        store.fetch()
+                                    }.apply {
+                                        enabled(not(store.fetch.isRunning))
+                                    }
+
+                                    Button("Cancel") {
+                                        store.fetch.cancel()
+                                    }.apply {
+                                        enabled(store.fetch.isRunning)
+                                    }
+                                }
+
+                                Panel(visible = store.fetch.isRunning) {
+                                    progressBar(store::progress)
+                                }
+
+                                Label(store.statusText)
+
+                                separator()
+                            }
+                        }
+
+                        center {
+                            ListBox(store.displayItems)
+                        }
                     }
                 }
-            }
 
-            south {
-                Label("Leave blank to load all · \"m\" for rocky planets · \"error\" to simulate failure")
-                    .apply { font = Font("SansSerif", Font.ITALIC, 11) }
+                south {
+                    Label("Leave blank to load all · \"m\" for rocky planets · \"error\" to simulate failure")
+                        .apply { font = Font("SansSerif", Font.ITALIC, 11) }
+                }
             }
         }
     }
