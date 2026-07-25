@@ -167,6 +167,44 @@ action {                                       // batch — derivations fire onc
 }
 ```
 
+### Change detection: `ref` and `struct`
+
+`observable(...)` decomposes an arbitrary object into one atom per property, and `ObservableValue`
+decides "did it change?" with `equals`. Two wrappers cover the cases where that is not what you want —
+the equivalents of MobX's `observable.ref` and `observable.struct`:
+
+```kotlin
+class Store {
+    // One atom holding the whole value, compared by identity (===).
+    // Reassigning an equal-but-distinct instance still notifies.
+    var session: Session by observableRef(Session.Anonymous)
+
+    // Compared deeply and structurally — arrays and lists included, so a write
+    // with the same content notifies nobody.
+    var matrix: Array<IntArray> by observableStruct(emptyArray())
+
+    // Or bring your own policy.
+    val temperature = observableWith(20.0) { a, b -> abs(a - b) < 0.5 }
+}
+```
+
+Both are `MutableObservable`s, so they work with two-way bindings (`TextField(store::session)`) exactly
+like a plain observable.
+
+The same idea applies to derivations. A plain `computed` propagates *invalidation*: every upstream write
+re-runs dependents, even when the derived result is identical. `computedStruct` / `computedRef` notify
+only on an actual change:
+
+```kotlin
+val isOverLimit = computedStruct { items.size > 10 }   // fires on false <-> true, not on every add
+```
+
+Deciding whether the result changed means evaluating it, so these derivations are eager: they
+re-evaluate when an upstream observable changes, or once at the end of the enclosing `action`.
+
+Finally, `untracked { }` reads observables without subscribing to them — useful inside a reaction that
+must consult a value it should not re-run for.
+
 ## Full examples and source
 
 Real, runnable demos live in the repo:

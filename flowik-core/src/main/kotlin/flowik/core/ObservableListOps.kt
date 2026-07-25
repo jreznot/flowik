@@ -29,9 +29,9 @@ fun <T, R> ObservableList<T>.flatMap(transform: (T) -> Iterable<R>): Computed<Li
     computed { items.flatMap(transform) }
 
 //
-// Applying map/filter/flatMap to a Computed<List<T>> returns another
-// Computed<List<R>>, so operations can be composed without an intermediate
-// ObservableList:
+// Applying map/filter/flatMap to any derived list — from computed { } or from
+// computedStruct { } — returns another Computed<List<R>>, so operations can be
+// composed without an intermediate ObservableList:
 //
 //   val visibleNames: Computed<List<String>> = todos
 //       .filter { !it[TodoItem::done].value }
@@ -41,21 +41,21 @@ fun <T, R> ObservableList<T>.flatMap(transform: (T) -> Iterable<R>): Computed<Li
  * Returns a [Computed] list where each element of this derived list has been
  * transformed by [transform].
  */
-fun <T, R> Computed<List<T>>.map(transform: (T) -> R): Computed<List<R>> =
+fun <T, R> ReadableObservable<List<T>>.map(transform: (T) -> R): Computed<List<R>> =
     computed { value.map(transform) }
 
 /**
  * Returns a [Computed] list containing only the elements of this derived list
  * that satisfy [predicate].
  */
-fun <T> Computed<List<T>>.filter(predicate: (T) -> Boolean): Computed<List<T>> =
+fun <T> ReadableObservable<List<T>>.filter(predicate: (T) -> Boolean): Computed<List<T>> =
     computed { value.filter(predicate) }
 
 /**
  * Returns a [Computed] list where each element of this derived list is
  * transformed to an [Iterable] and the results are concatenated.
  */
-fun <T, R> Computed<List<T>>.flatMap(transform: (T) -> Iterable<R>): Computed<List<R>> =
+fun <T, R> ReadableObservable<List<T>>.flatMap(transform: (T) -> Iterable<R>): Computed<List<R>> =
     computed { value.flatMap(transform) }
 
 // Named *Values (not map/filter/flatMap) to avoid overload-resolution ambiguity:

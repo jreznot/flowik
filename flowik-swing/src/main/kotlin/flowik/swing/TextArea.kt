@@ -1,6 +1,6 @@
 package flowik.swing
 
-import flowik.core.ObservableValue
+import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.layout.PanelScope
 import javax.swing.JScrollPane
@@ -8,7 +8,7 @@ import javax.swing.JTextArea
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 
-fun JTextArea.value(model: ObservableValue<String>) {
+fun JTextArea.value(model: MutableObservable<String>) {
     var updating = false
     autoRun("JTextArea.sync") {
         val current = model.value
@@ -28,5 +28,5 @@ fun JTextArea.value(model: ObservableValue<String>) {
     })
 }
 
-fun PanelScope.TextArea(model: ObservableValue<String>, rows: Int = 4, cols: Int = 30): JTextArea =
+fun PanelScope.TextArea(model: MutableObservable<String>, rows: Int = 4, cols: Int = 30): JTextArea =
     JTextArea(rows, cols).also { it.value(model); panel.add(JScrollPane(it)) }

@@ -2,12 +2,12 @@ package flowik.vaadin
 
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.value.ValueChangeMode
-import flowik.core.ObservableValue
+import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.core.unwrapBinding
 import kotlin.reflect.KProperty0
 
-fun TextField.value(model: ObservableValue<String>) {
+fun TextField.value(model: MutableObservable<String>) {
     if (valueChangeMode == null) {
         valueChangeMode = ValueChangeMode.EAGER
     }
@@ -24,7 +24,6 @@ fun TextField.value(model: ObservableValue<String>) {
     }
 }
 
-@Suppress("UNCHECKED_CAST")
 fun TextField.value(prop: KProperty0<String>) {
     value(unwrapBinding(prop))
 }

@@ -1,6 +1,6 @@
 package flowik.swing
 
-import flowik.core.Computed
+import flowik.core.ReadableObservable
 import flowik.core.Disposable
 import flowik.core.ListChange
 import flowik.core.ObservableList
@@ -74,7 +74,7 @@ fun <T> JList<T>.items(source: ObservableList<T>) {
     onDetached { newModel.dispose() }
 }
 
-fun <T> JList<T>.items(computed: Computed<List<T>>) {
+fun <T> JList<T>.items(computed: ReadableObservable<List<T>>) {
     val data = ObservableList<T>()
     items(data)
     autoRun("JList.computed") {
@@ -89,7 +89,7 @@ fun <T> PanelScope.ListBox(data: ObservableList<T>): ScrollableListBox<T> {
     }
 }
 
-fun <T> PanelScope.ListBox(computed: Computed<List<T>>): ScrollableListBox<T> {
+fun <T> PanelScope.ListBox(computed: ReadableObservable<List<T>>): ScrollableListBox<T> {
     return ScrollableListBox<T>().also {
         it.jList.items(computed)
         panel.add(it)

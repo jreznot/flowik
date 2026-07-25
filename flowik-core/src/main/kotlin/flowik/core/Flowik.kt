@@ -35,12 +35,82 @@ fun <T : Any> observable(initial: T): ObservableMap<T> = ObservableMap(initial)
 /** Explicit alias — prefer [observable] for brevity. */
 fun <T : Any> observableMap(initial: T): ObservableMap<T> = ObservableMap(initial)
 
+// MobX's observable.ref / observable.struct, as delegated wrappers. Both keep the
+// value atomic — no per-property decomposition — and differ only in how they
+// detect a change. Use them as property delegates or as plain fields:
+// ```
+//   class Store {
+//       var session: Session by observableRef(Session.Anonymous)
+//       val matrix = observableStruct(arrayOf(intArrayOf(1, 2)))
+//   }
+// ```
+
+/**
+ * An atom holding [initial] as an opaque reference, compared by identity
+ * ([Comparer.Identity]) — MobX's `observable.ref`.
+ *
+ * Unlike `observable(initial)`, which decomposes an arbitrary object into an
+ * [ObservableMap] of per-property atoms, the whole value stays in one atom.
+ * Reassigning an equal-but-distinct instance notifies dependents.
+ */
+fun <T> observableRef(initial: T, name: String? = null): MutableObservable<T> =
+    PolicyObservable(initial, name, Comparer.Identity)
+
+/**
+ * An atom holding [initial] as an opaque value, compared *deeply and
+ * structurally* ([Comparer.Structural]) — MobX's `observable.struct`.
+ *
+ * Writes that are structurally equal to the current value are dropped, which
+ * [ObservableValue] cannot do for arrays or for types whose `equals` is
+ * identity-based.
+ */
+fun <T> observableStruct(initial: T, name: String? = null): MutableObservable<T> =
+    PolicyObservable(initial, name, Comparer.Structural)
+
 /** Create an [ObservableMapList] pre-populated with [items]. */
 fun <T : Any> observables(vararg items: T): ObservableMapList<T> =
     ObservableMapList(items.toList())
 
 /** Create a computed (derived) value with auto-tracking. */
 fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
+
+/**
+ * A derived value that notifies dependents only when its result changes
+ * *structurally* ([Comparer.Structural]) — MobX's `computed.struct`.
+ *
+ * A plain [computed] propagates *invalidation*, not change: every upstream write
+ * re-runs every dependent reaction, even when the derived value is identical.
+ * `computedStruct { count.value > 5 }` instead fires only on `false <-> true`.
+ *
+ * Deciding whether the value changed requires evaluating it, so — unlike
+ * [computed] — the derivation is **not lazy**: it re-evaluates as soon as an
+ * upstream observable changes, or, when the writes happen inside an [action],
+ * once at the end of the batch. Reading the value inside the batch refreshes on
+ * demand, so a read never observes a stale result.
+ *
+ * [Disposable.dispose] stops observing the upstream: dependents are no longer
+ * notified and the value stays frozen at the last observed result.
+ */
+fun <T> computedStruct(compute: () -> T): DisposableObservable<T> =
+    PolicyComputed(compute, Comparer.Structural)
+
+/**
+ * A derived value that notifies dependents only when its result changes by
+ * identity ([Comparer.Identity]).
+ *
+ * The cheap variant of [computedStruct] — right for derived object references
+ * and for results that are already canonical (enums, interned values). Shares
+ * [computedStruct]'s eagerness and disposal semantics.
+ */
+fun <T> computedRef(compute: () -> T): DisposableObservable<T> =
+    PolicyComputed(compute, Comparer.Identity)
+
+/**
+ * Reads observables inside [block] without registering dependencies.
+ *
+ * Useful inside a reaction that must consult a value it should *not* re-run for.
+ */
+fun <R> untracked(block: () -> R): R = Tracking.untracked(block)
 
 /**
  * Create a reaction with MobX-style semantics. Returns the [Disposable] so it
@@ -106,17 +176,29 @@ inline fun <R> action(block: () -> R): R {
     }
 }
 
+/**
+ * Returns the reactive container a property is delegated to, so two-way
+ * bindings can be written as `TextField(store::name)`.
+ *
+ * @throws IllegalArgumentException if [prop] has no delegate, or is delegated to
+ *         something that is not a [MutableObservable].
+ */
 @Suppress("UNCHECKED_CAST")
-fun <T> unwrapBinding(prop: KProperty0<T>): ObservableValue<T> {
+fun <T> unwrapBinding(prop: KProperty0<T>): MutableObservable<T> {
     prop.isAccessible = true
-    val delegate = prop.getDelegate() ?: throw IllegalArgumentException("Property must have a delegate")
-    return delegate as ObservableValue<T>
+    val delegate = prop.getDelegate()
+        ?: throw IllegalArgumentException("Property '${prop.name}' must have a delegate")
+    return delegate as? MutableObservable<T>
+        ?: throw IllegalArgumentException(
+            "Property '${prop.name}' is delegated to ${delegate::class.simpleName}, " +
+                    "which is not a MutableObservable — cannot bind it two-way"
+        )
 }
 
-fun not(value: ObservableValue<Boolean>): Computed<Boolean> = computed { !value.value }
-fun or(vararg values: ObservableValue<Boolean>): Computed<Boolean> = computed { values.any { it.value } }
-fun and(vararg values: ObservableValue<Boolean>): Computed<Boolean> = computed { values.all { it.value } }
+fun not(value: ReadableObservable<Boolean>): Computed<Boolean> = computed { !value.value }
+fun or(vararg values: ReadableObservable<Boolean>): Computed<Boolean> = computed { values.any { it.value } }
+fun and(vararg values: ReadableObservable<Boolean>): Computed<Boolean> = computed { values.all { it.value } }
 
-fun ObservableValue<Boolean>.toggle() {
+fun MutableObservable<Boolean>.toggle() {
     value = !value
 }

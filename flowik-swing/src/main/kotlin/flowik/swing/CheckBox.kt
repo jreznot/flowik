@@ -1,11 +1,11 @@
 package flowik.swing
 
-import flowik.core.ObservableValue
+import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.layout.PanelScope
 import javax.swing.JCheckBox
 
-fun JCheckBox.bindChecked(model: ObservableValue<Boolean>) {
+fun JCheckBox.bindChecked(model: MutableObservable<Boolean>) {
     var updating = false
     autoRun("JCheckBox.sync") {
         val current = model.value
@@ -20,5 +20,5 @@ fun JCheckBox.bindChecked(model: ObservableValue<Boolean>) {
     }
 }
 
-fun PanelScope.CheckBox(model: ObservableValue<Boolean>, label: String = ""): JCheckBox =
+fun PanelScope.CheckBox(model: MutableObservable<Boolean>, label: String = ""): JCheckBox =
     JCheckBox(label).also { it.bindChecked(model); panel.add(it) }

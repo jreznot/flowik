@@ -1,6 +1,6 @@
 package flowik.swing
 
-import flowik.core.ObservableValue
+import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.core.unwrapBinding
 import flowik.layout.PanelScope
@@ -17,7 +17,7 @@ class FixedColumnTextField(columns: Int = 20) : JTextField(columns) {
     }
 }
 
-fun JTextField.value(model: ObservableValue<String>) {
+fun JTextField.value(model: MutableObservable<String>) {
     var updating = false
     autoRun("JTextField.sync") {
         val current = model.value
@@ -37,14 +37,13 @@ fun JTextField.value(model: ObservableValue<String>) {
     })
 }
 
-fun PanelScope.TextField(model: ObservableValue<String>, columns: Int = 20): JTextField {
+fun PanelScope.TextField(model: MutableObservable<String>, columns: Int = 20): JTextField {
     return FixedColumnTextField(columns).also {
         it.value(model)
         panel.add(it)
     }
 }
 
-@Suppress("UNCHECKED_CAST")
 fun PanelScope.TextField(prop: KProperty0<String>, columns: Int = 20): JTextField {
     return TextField(unwrapBinding(prop), columns)
 }

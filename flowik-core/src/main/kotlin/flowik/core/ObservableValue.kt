@@ -1,17 +1,16 @@
 package flowik.core
 
-import java.util.function.Supplier
-import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 /**
  * A reactive observable value — the atom of the Reaktor system.
  *
  * Reads are tracked automatically when a [Tracker] (reaction or computed) is
- * evaluating. Writes notify all tracked dependents.
+ * evaluating. Writes notify all tracked dependents, using `equals` to decide
+ * whether anything changed. For identity or deep structural change detection
+ * use [observableRef] / [observableStruct] instead.
  */
-class ObservableValue<T>(initial: T, private val name: String? = null)
-    : ReadWriteProperty<Any?, T>, Observable, Supplier<T> {
+class ObservableValue<T>(initial: T, private val name: String? = null) : MutableObservable<T> {
 
     private var _value: T = initial
 
@@ -21,7 +20,7 @@ class ObservableValue<T>(initial: T, private val name: String? = null)
     /** External subscribers registered via [subscribe]. */
     private val subscribers = mutableListOf<Observer>()
 
-    var value: T
+    override var value: T
         get() {
             // Register with the currently tracking reaction/computed
             Tracking.current?.addDependency(this)

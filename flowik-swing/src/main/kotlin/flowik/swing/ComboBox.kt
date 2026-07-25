@@ -1,13 +1,13 @@
 package flowik.swing
 
 import flowik.core.ObservableList
-import flowik.core.ObservableValue
+import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.layout.PanelScope
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
 
-fun <T> JComboBox<Any?>.items(items: ObservableList<T>, selection: ObservableValue<T?>) {
+fun <T> JComboBox<Any?>.items(items: ObservableList<T>, selection: MutableObservable<T?>) {
     var updating = false
     val bindable = asBindableComponent()
 
@@ -36,5 +36,5 @@ fun <T> JComboBox<Any?>.items(items: ObservableList<T>, selection: ObservableVal
     }
 }
 
-fun <T> PanelScope.ComboBox(items: ObservableList<T>, selection: ObservableValue<T?>): JComboBox<Any?> =
+fun <T> PanelScope.ComboBox(items: ObservableList<T>, selection: MutableObservable<T?>): JComboBox<Any?> =
     JComboBox<Any?>().also { it.items(items, selection); panel.add(it) }
