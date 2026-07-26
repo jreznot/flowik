@@ -1,11 +1,10 @@
 <idea-plugin>
     <id>org.example.flowik-intellij-demo</id>
     <name>Flowik Demo</name>
-    <vendor url="https://www.yourcompany.com">YourCompany</vendor>
+    <vendor>JetBrains</vendor>
 
     <description><![CDATA[
-        Enter short description for your plugin here.<br>
-        <em>most HTML tags may be used</em>
+        Showcases Flowik MobX for IntelliJ Platform plugins.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
