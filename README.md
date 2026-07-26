@@ -30,7 +30,7 @@ Flowik is directly inspired by [MobX](https://mobx.js.org/). The core idea, in o
 In practice this means three building blocks:
 
 - **Observable state** — mutable values that *track who reads them*.
-  Created with `observable(...)`, `observableMap(...)`, `observables(...)`, `observableSet(...)`.
+  Created with `observable(...)`, `observableEntity(...)`, `observables(...)`, `observableSet(...)`.
 - **Derivations** — pure functions over observables.
   Either `computed { ... }` for cached values or `autoRun { ... }` for side effects (typically UI updates).
   Both are *self-wiring*: they re-evaluate when — and only when — something they read has changed.
@@ -182,8 +182,8 @@ From `flowik-core`:
 
 ```kotlin
 val name    = observable("Alice")              // ObservableValue<String>
-val person  = observable(Person("Bob", 30))    // ObservableMap<Person> — each property reactive
-val items   = observables<TodoItem>()          // ObservableMapList<TodoItem>
+val person  = observable(Person("Bob", 30))    // ObservableEntity<Person> — each property reactive
+val items   = observables<TodoItem>()          // ObservableEntityList<TodoItem>
 val roles   = observableSet("admin")           // ObservableSet<String>
 
 val greeting = computed { "Hello, ${name.value}" }
@@ -214,8 +214,8 @@ team[Team::name]                    // ObservableValue<String>  — scalar atom
 team[Team::address]                 // ObservableValue<Address>  — the whole object in one atom
 team[Team::tags]                    // ObservableList<String>    — reactive list of plain values
 
-team.nested(Team::address)          // ObservableMap<Address>    — city and zip are separate atoms
-team.nestedList(Team::members)      // ObservableMapList<Member> — each element is an ObservableMap
+team.nested(Team::address)          // ObservableEntity<Address>    — city and zip are separate atoms
+team.nestedList(Team::members)      // ObservableEntityList<Member> — each element is an ObservableEntity
 ```
 
 `nested` / `nestedList` compose, so a tree of any depth is reachable, and typed paths keep the common
@@ -287,7 +287,7 @@ class Store {
 }
 ```
 
-Elements are stored as plain values (a shallow container — there is no `ObservableMap`-wrapping
+Elements are stored as plain values (a shallow container — there is no `ObservableEntity`-wrapping
 variant, since hashing would key each element on its initial snapshot). For a keyed reactive
 collection use `observables(...)`. Fine-grained `SetChange.Add` / `Remove` / `Clear` events are
 available through `onChange { }`, mirroring `ObservableList`.

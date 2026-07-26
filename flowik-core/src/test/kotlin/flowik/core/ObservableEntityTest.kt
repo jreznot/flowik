@@ -2,7 +2,7 @@ package flowik.core
 
 import kotlin.test.*
 
-class ObservableMapTest {
+class ObservableEntityTest {
 
     private data class Address(val city: String, val zip: String)
 
@@ -18,7 +18,7 @@ class ObservableMapTest {
 
     private data class Company(val name: String, val team: Team)
 
-    private fun team(): ObservableMap<Team> = observable(
+    private fun team(): ObservableEntity<Team> = observable(
         Team(
             name = "A-Team",
             address = Address("Munich", "80331"),

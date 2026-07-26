@@ -33,13 +33,13 @@ fun observable(initial: LocalDateTime, name: String? = null): ObservableValue<Lo
  * Wrap an arbitrary [T] instance, exposing each property as an [ObservableValue].
  *
  * Decomposition is one level deep by default. Nested objects and lists of
- * objects are decomposed on demand with [ObservableMap.nested] and
- * [ObservableMap.nestedList], which compose to any depth.
+ * objects are decomposed on demand with [ObservableEntity.nested] and
+ * [ObservableEntity.nestedList], which compose to any depth.
  */
-fun <T : Any> observable(initial: T): ObservableMap<T> = ObservableMap(initial)
+fun <T : Any> observable(initial: T): ObservableEntity<T> = ObservableEntity(initial)
 
 /** Explicit alias — prefer [observable] for brevity. */
-fun <T : Any> observableMap(initial: T): ObservableMap<T> = ObservableMap(initial)
+fun <T : Any> observableEntity(initial: T): ObservableEntity<T> = ObservableEntity(initial)
 
 // MobX's observable.ref / observable.struct, as delegated wrappers. Both keep the
 // value atomic — no per-property decomposition — and differ only in how they
@@ -56,7 +56,7 @@ fun <T : Any> observableMap(initial: T): ObservableMap<T> = ObservableMap(initia
  * ([Comparer.Identity]) — MobX's `observable.ref`.
  *
  * Unlike `observable(initial)`, which decomposes an arbitrary object into an
- * [ObservableMap] of per-property atoms, the whole value stays in one atom.
+ * [ObservableEntity] of per-property atoms, the whole value stays in one atom.
  * Reassigning an equal-but-distinct instance notifies dependents.
  */
 fun <T> observableRef(initial: T, name: String? = null): MutableObservable<T> =
@@ -73,9 +73,9 @@ fun <T> observableRef(initial: T, name: String? = null): MutableObservable<T> =
 fun <T> observableStruct(initial: T, name: String? = null): MutableObservable<T> =
     PolicyObservable(initial, name, Comparer.Structural)
 
-/** Create an [ObservableMapList] pre-populated with [items]. */
-fun <T : Any> observables(vararg items: T): ObservableMapList<T> =
-    ObservableMapList(items.toList())
+/** Create an [ObservableEntityList] pre-populated with [items]. */
+fun <T : Any> observables(vararg items: T): ObservableEntityList<T> =
+    ObservableEntityList(items.toList())
 
 /** Create an [ObservableList] pre-populated with [items]. */
 fun <T : Any> observablesShallow(vararg items: T): ObservableList<T> =

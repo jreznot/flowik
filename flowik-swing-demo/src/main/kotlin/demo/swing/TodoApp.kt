@@ -25,11 +25,11 @@ data class TodoItem(val text: String, val done: Boolean = false)
  * Arrow keys navigate, Space toggles done, Delete/Backspace removes.
  */
 private fun TodoListPanel(
-    visibleItems: () -> ObservableMaps<TodoItem>,
-    toggleItem: (ObservableMap<TodoItem>) -> Unit,
-    removeItem: (ObservableMap<TodoItem>) -> Unit
+    visibleItems: () -> List<ObservableEntity<TodoItem>>,
+    toggleItem: (ObservableEntity<TodoItem>) -> Unit,
+    removeItem: (ObservableEntity<TodoItem>) -> Unit
 ): JScrollPane {
-    val listModel = DefaultListModel<ObservableMap<TodoItem>>()
+    val listModel = DefaultListModel<ObservableEntity<TodoItem>>()
     val jList = JList(listModel).apply {
         cellRenderer = TodoCellRenderer()
         selectionMode = ListSelectionModel.SINGLE_SELECTION
@@ -104,7 +104,7 @@ private fun TodoListPanel(
 }
 
 /** Renders a to-do row: [✓] text [✕] */
-private class TodoCellRenderer : ListCellRenderer<ObservableMap<TodoItem>> {
+private class TodoCellRenderer : ListCellRenderer<ObservableEntity<TodoItem>> {
     private val panel = JPanel(BorderLayout(6, 0)).apply {
         border = BorderFactory.createEmptyBorder(2, 4, 2, 4)
     }
@@ -122,8 +122,8 @@ private class TodoCellRenderer : ListCellRenderer<ObservableMap<TodoItem>> {
     }
 
     override fun getListCellRendererComponent(
-        list: JList<out ObservableMap<TodoItem>>,
-        value: ObservableMap<TodoItem>,
+        list: JList<out ObservableEntity<TodoItem>>,
+        value: ObservableEntity<TodoItem>,
         index: Int,
         isSelected: Boolean,
         cellHasFocus: Boolean
@@ -164,7 +164,7 @@ fun todoDemo() {
             var showCompleted by observable(true, name = "showCompleted")
             var showFilter by observable(false, name = "showFilter")
 
-            val visibleItems by todos.filter { item: ObservableMap<TodoItem> ->
+            val visibleItems by todos.filter { item: ObservableEntity<TodoItem> ->
                 val filterText = filter.lowercase()
                 (showCompleted || !item[TodoItem::done].value)
                         && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
@@ -180,9 +180,9 @@ fun todoDemo() {
                 if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
             }
 
-            fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
+            fun removeItem(item: ObservableEntity<TodoItem>) = action { todos.remove(item) }
 
-            fun toggleItem(item: ObservableMap<TodoItem>) = action {
+            fun toggleItem(item: ObservableEntity<TodoItem>) = action {
                 item[TodoItem::done].value = !item[TodoItem::done].value
             }
 

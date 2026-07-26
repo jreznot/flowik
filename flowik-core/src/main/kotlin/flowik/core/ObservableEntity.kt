@@ -20,8 +20,8 @@ import kotlin.reflect.jvm.isAccessible
  *
  * ### Deep access — the nested value is decomposed in turn
  *
- * - object properties → [ObservableMap], via [nested]
- * - lists of objects → [ObservableMapList], via [nestedList], so each element's
+ * - object properties → [ObservableEntity], via [nested]
+ * - lists of objects → [ObservableEntityList], via [nestedList], so each element's
  *   properties are reactive as well
  *
  * Deep access is *explicit* rather than automatic because a property's Kotlin
@@ -59,8 +59,8 @@ import kotlin.reflect.jvm.isAccessible
  * ### Propagation
  *
  * A change anywhere in the tree reaches the [subscribe] listeners of every
- * container above it: an atom notifies its owning [ObservableMap], which
- * notifies the [ObservableMapList] or [ObservableMap] that owns *it*, up to the
+ * container above it: an atom notifies its owning [ObservableEntity], which
+ * notifies the [ObservableEntityList] or [ObservableEntity] that owns *it*, up to the
  * root. Auto-tracking stays fine-grained regardless — a reaction re-runs only
  * for the atoms it actually read.
  *
@@ -78,10 +78,10 @@ import kotlin.reflect.jvm.isAccessible
  * why the wrapped type is normally immutable). Read current state through the
  * containers, not through [snapshot].
  */
-class ObservableMap<T : Any>(private val initial: T) : Observable {
+class ObservableEntity<T : Any>(private val initial: T) : Observable {
 
     /**
-     * The wrapped value as originally passed to [ObservableMap].
+     * The wrapped value as originally passed to [ObservableEntity].
      *
      * Note: this reflects the *initial* state of [T], not any property
      * mutations made via [get] or [nested]. Use it for a list-level map /
@@ -151,7 +151,7 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
     // Deep access — the property value is decomposed into containers of its own.
 
     /**
-     * Returns the [ObservableMap] decomposing the object held by [prop], so its
+     * Returns the [ObservableEntity] decomposing the object held by [prop], so its
      * own properties are individually reactive — and can be decomposed further.
      *
      * The bound `P : Any` keeps nullable properties out: there is nothing to
@@ -161,53 +161,52 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
      *         (a number, string, enum, collection, …).
      * @throws IllegalStateException    if the property is already exposed as something else.
      */
-    fun <P : Any> nested(prop: KProperty1<T, P>): ObservableMap<P> =
-        container(prop.name, Access.NESTED) { ObservableMap(requireObject(prop.name, prop.get(initial))) }
+    fun <P : Any> nested(prop: KProperty1<T, P>): ObservableEntity<P> =
+        container(prop.name, Access.NESTED) { ObservableEntity(requireObject(prop.name, prop.get(initial))) }
 
     /**
-     * Returns the [ObservableMap] decomposing the object held by the property
+     * Returns the [ObservableEntity] decomposing the object held by the property
      * named [name].
      *
      * @throws NoSuchElementException   if [name] does not match any property on [T].
      * @throws IllegalArgumentException if the value is `null` or is not a decomposable object.
      * @throws IllegalStateException    if the property is already exposed as something else.
      */
-    fun <P : Any> nested(name: String): ObservableMap<P> =
-        container(name, Access.NESTED) { ObservableMap(requireObject<P>(name, propertyValue(name))) }
+    fun <P : Any> nested(name: String): ObservableEntity<P> =
+        container(name, Access.NESTED) { ObservableEntity(requireObject<P>(name, propertyValue(name))) }
 
     /**
-     * Returns the [ObservableMapList] for a list-of-objects property: the list
-     * itself is reactive, and each element is wrapped in an [ObservableMap], so
+     * Returns the [ObservableEntityList] for a list-of-objects property: the list
+     * itself is reactive, and each element is wrapped in an [ObservableEntity], so
      * `nestedList(Team::members)[0][Member::name]` is a fine-grained atom.
      *
      * Element property changes reach this map's [subscribe] listeners, but — as
-     * with any [ObservableMapList] — they do not invalidate readers of the list
-     * *contents*. A reaction that must re-run on them reads the element
-     * properties it cares about, the way [ObservableListOps] transforms do.
+     * with any [ObservableEntityList] — they do not invalidate readers of the list
+     * *contents*.
      *
      * @throws IllegalArgumentException if the value is not a [List], or holds nulls
      *         or plain values rather than objects.
      * @throws IllegalStateException    if the property is already exposed as something else.
      */
-    fun <P : Any> nestedList(prop: KProperty1<T, List<P>>): ObservableMapList<P> =
+    fun <P : Any> nestedList(prop: KProperty1<T, List<P>>): ObservableEntityList<P> =
         container(prop.name, Access.NESTED_LIST) {
             requireObjectElementType(prop.name, prop)
-            ObservableMapList(requireObjectList(prop.name, prop.get(initial)))
+            ObservableEntityList(requireObjectList(prop.name, prop.get(initial)))
         }
 
     /**
-     * Returns the [ObservableMapList] for the list-of-objects property named [name].
+     * Returns the [ObservableEntityList] for the list-of-objects property named [name].
      *
      * @throws NoSuchElementException   if [name] does not match any property on [T].
      * @throws IllegalArgumentException if the value is not a [List], or holds nulls
      *         or plain values rather than objects.
      * @throws IllegalStateException    if the property is already exposed as something else.
      */
-    fun <P : Any> nestedList(name: String): ObservableMapList<P> =
+    fun <P : Any> nestedList(name: String): ObservableEntityList<P> =
         container(name, Access.NESTED_LIST) {
             val prop = property(name)
             requireObjectElementType(name, prop)
-            ObservableMapList(requireObjectList<P>(name, prop.getter.call(initial)))
+            ObservableEntityList(requireObjectList<P>(name, prop.getter.call(initial)))
         }
 
     // Typed paths — sugar for walking two or three levels down in one expression.
@@ -246,12 +245,12 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
     }
 
     /**
-     * Two [ObservableMap] instances are equal when their wrapped [initial]
-     * values are equal. This allows [ObservableMapList.remove] to locate a
+     * Two [ObservableEntity] instances are equal when their wrapped [initial]
+     * values are equal. This allows [ObservableEntityList.remove] to locate a
      * wrapper by its original data value.
      */
     override fun equals(other: Any?): Boolean =
-        other is ObservableMap<*> && initial == other.initial
+        other is ObservableEntity<*> && initial == other.initial
 
     override fun hashCode(): Int = initial.hashCode()
 
@@ -372,18 +371,19 @@ class ObservableMap<T : Any>(private val initial: T) : Observable {
     }
 
     private fun accessOf(container: Observable): Access = when (container) {
-        is ObservableMapList<*> -> Access.NESTED_LIST
+        is ObservableEntityList<*> -> Access.NESTED_LIST
         is ObservableList<*> -> Access.LIST
-        is ObservableMap<*> -> Access.NESTED
+        is ObservableEntity<*> -> Access.NESTED
         else -> Access.VALUE
     }
 }
 
 /**
  * Types that have no meaningful properties to decompose — decomposing a [String]
- * into `length` is never what the caller meant. Keeps [ObservableMap]'s deep
+ * into `length` is never what the caller meant. Keeps [ObservableEntity]'s deep
  * accessors from silently producing a nonsense wrapper.
  */
+@Suppress("RemoveRedundantQualifierName")
 private val ATOMIC_TYPES: List<Class<*>> = listOf(
     CharSequence::class.java,
     Number::class.java,

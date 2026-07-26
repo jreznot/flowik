@@ -36,11 +36,11 @@ import kotlin.reflect.KProperty
  * semantics: adding a duplicate is not a change.
  *
  * Elements are held as plain values, so this is a *shallow* container: there is
- * no [ObservableMap]-wrapping variant (the counterpart of [observables] for
+ * no [ObservableEntity]-wrapping variant (the counterpart of [observables] for
  * lists). Wrapping would key the set on each element's initial snapshot —
- * [ObservableMap.hashCode] is that of the wrapped value at construction — so two
+ * [ObservableEntity.hashCode] is that of the wrapped value at construction — so two
  * wrappers whose properties have since diverged would still collapse into one
- * element. Model a keyed reactive collection as an [ObservableMapList] instead.
+ * element. Model a keyed reactive collection as an [ObservableEntityList] instead.
  *
  * Implementation note: reads register a dependency on a private version atom
  * rather than on the set itself, because [Tracker.addDependency] is typed to

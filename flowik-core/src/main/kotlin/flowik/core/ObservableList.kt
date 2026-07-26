@@ -131,7 +131,7 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Muta
      * invalidating reactions that read the list contents.
      *
      * For changes that happen inside an element rather than to the list itself —
-     * what [ObservableMapList] forwards from its element wrappers.
+     * what [ObservableEntityList] forwards from its element wrappers.
      */
     protected fun notifySubscribers() {
         subscribers.toList().forEach { it.onChange() }
@@ -166,13 +166,13 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Muta
 
     /**
      * A [MutableList] view that delegates mutating operations back to this
-     * [ObservableMapList] instance, keeping reactive tracking intact.
+     * [ObservableEntityList] instance, keeping reactive tracking intact.
      */
     private val delegate: MutableList<T> by lazy { DelegateList() }
 
     /**
      * Mutable list implementation that delegates add/remove/clear/size and
-     * other read operations to the owning [ObservableMapList] instance.
+     * other read operations to the owning [ObservableEntityList] instance.
      */
     private inner class DelegateList : AbstractMutableList<T>() {
         override val size: Int

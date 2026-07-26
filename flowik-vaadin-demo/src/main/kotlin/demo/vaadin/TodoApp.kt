@@ -26,7 +26,7 @@ class TodoStore {
     var showCompleted by observable(true, name = "showCompleted")
     var showFilter by observable(false, name = "showFilter")
 
-    val visibleItems by todos.filter { item: ObservableMap<TodoItem> ->
+    val visibleItems by todos.filter { item: ObservableEntity<TodoItem> ->
         val filterText = filter.lowercase()
         (showCompleted || !item[TodoItem::done].value)
                 && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
@@ -42,7 +42,7 @@ class TodoStore {
         if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
     }
 
-    fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
+    fun removeItem(item: ObservableEntity<TodoItem>) = action { todos.remove(item) }
 
     fun clearCompleted() = action {
         doneTodos.forEach { todos.remove(it) }
@@ -157,7 +157,7 @@ class TodoView : VerticalLayout() {
         }
     }
 
-    private fun todoRow(item: ObservableMap<TodoItem>): HorizontalLayout = HorizontalLayout().apply {
+    private fun todoRow(item: ObservableEntity<TodoItem>): HorizontalLayout = HorizontalLayout().apply {
         setWidthFull()
         alignItems = FlexComponent.Alignment.CENTER
         isPadding = false

@@ -16,7 +16,7 @@ import kotlin.reflect.KProperty
  *   `equals`; here the [comparer] decides, so identity ([Comparer.Identity])
  *   and deep structural ([Comparer.Structural]) semantics are both available.
  * - **The value stays atomic.** `observable(someObject)` decomposes an
- *   arbitrary object into one atom per property ([ObservableMap]). This wrapper
+ *   arbitrary object into one atom per property ([ObservableEntity]). This wrapper
  *   holds the whole value in a single atom, which is what you want for
  *   immutable snapshots, sealed-class state, arrays, or anything you replace
  *   wholesale.
