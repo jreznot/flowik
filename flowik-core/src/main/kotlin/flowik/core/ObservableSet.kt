@@ -48,7 +48,7 @@ import kotlin.reflect.KProperty
  * therefore respect [action] batching.
  */
 class ObservableSet<T>(initial: Collection<T> = emptySet()) :
-    Iterable<T>, Observable, Supplier<Set<T>>, ReadWriteProperty<Any?, MutableSet<T>> {
+    Iterable<T>, MutableObservable<MutableSet<T>>, ReadWriteProperty<Any?, MutableSet<T>> {
 
     /** Internal version counter — observing this is how reactions track "the set changed". */
     private val version = ObservableValue(0L, name = "set-version")
@@ -187,9 +187,7 @@ class ObservableSet<T>(initial: Collection<T> = emptySet()) :
     }
 
     /** Tracked, so one-way bindings that read this [Supplier] inside a reaction re-run. */
-    override fun get(): Set<T> = items
-
-    override fun toString(): String = "ObservableSet($backing)"
+    override fun get(): MutableSet<T> = delegate
 
     /**
      * A [MutableSet] view that delegates mutating operations back to this
@@ -197,9 +195,23 @@ class ObservableSet<T>(initial: Collection<T> = emptySet()) :
      */
     private val delegate: MutableSet<T> by lazy { DelegateSet() }
 
-    override fun getValue(thisRef: Any?, property: KProperty<*>): MutableSet<T> = delegate
+    override fun toString(): String = "ObservableSet($backing)"
+
+    override fun getValue(thisRef: Any?, property: KProperty<*>): MutableSet<T> {
+        version.value
+        return delegate
+    }
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: MutableSet<T>) = setAll(value)
+
+    override var value: MutableSet<T>
+        get() {
+            version.value
+            return delegate
+        }
+        set(value) {
+            setAll(value.toList())
+        }
 
     /**
      * Mutable set implementation that delegates reads and mutations to the

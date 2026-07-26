@@ -7,7 +7,7 @@ import kotlin.reflect.KProperty
  * with the auto-tracking system. Any reaction that reads [items], [size],
  * or iterates the list will re-run when the list is mutated.
  */
-open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, MutableObservable<List<T>> {
+open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, MutableObservable<MutableList<T>> {
 
     /** Internal version counter — observing this is how reactions track "the list changed". */
     private val version = ObservableValue(0L, name = "list-version")
@@ -137,23 +137,68 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Muta
         subscribers.toList().forEach { it.onChange() }
     }
 
-    override fun get(): List<T> = backing.toList()
+    override fun get(): MutableList<T> {
+        version.value
+        return delegate
+    }
 
-    override fun getValue(thisRef: Any?, property: KProperty<*>): List<T> = backing.toList()
+    override fun getValue(thisRef: Any?, property: KProperty<*>): MutableList<T> {
+        version.value
+        return delegate
+    }
 
     override fun setValue(
         thisRef: Any?,
         property: KProperty<*>,
-        value: List<T>
+        value: MutableList<T>
     ) {
         setAll(value.toList())
     }
 
-    override var value: List<T>
-        get() = backing.toList()
+    override var value: MutableList<T>
+        get() {
+            version.value
+            return delegate
+        }
         set(value) {
             setAll(value.toList())
         }
+
+    /**
+     * A [MutableList] view that delegates mutating operations back to this
+     * [ObservableMapList] instance, keeping reactive tracking intact.
+     */
+    private val delegate: MutableList<T> by lazy { DelegateList() }
+
+    /**
+     * Mutable list implementation that delegates add/remove/clear/size and
+     * other read operations to the owning [ObservableMapList] instance.
+     */
+    private inner class DelegateList : AbstractMutableList<T>() {
+        override val size: Int
+            get() = this@ObservableList.size
+
+        override fun get(index: Int): T = this@ObservableList[index]
+
+        override fun add(index: Int, element: T) {
+            this@ObservableList.add(index, element)
+        }
+
+        override fun removeAt(index: Int): T {
+            val removed = this@ObservableList.removeAt(index)
+            return removed
+        }
+
+        override fun set(index: Int, element: T): T {
+            val old = this@ObservableList[index]
+            this@ObservableList[index] = element
+            return old
+        }
+
+        override fun clear() {
+            this@ObservableList.clear()
+        }
+    }
 }
 
 /** Fine-grained change events for [ObservableList]. */

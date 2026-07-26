@@ -38,7 +38,7 @@ interface MutableObservable<T> : ReadableObservable<T>, ReadWriteProperty<Any?, 
 
 /**
  * A readable reactive value that owns a subscription and can be released —
- * what [computedStruct], [computedRef] and [computedWith] return.
+ * what [computedStruct], [computedRef] return.
  *
  * Disposing stops the derivation from observing its upstream, so it no longer
  * notifies dependents and its value stays frozen at the last observed result.

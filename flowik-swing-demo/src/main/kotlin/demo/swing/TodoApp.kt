@@ -35,7 +35,7 @@ private fun TodoListPanel(
         selectionMode = ListSelectionModel.SINGLE_SELECTION
     }
 
-    autoRun("todoList.rebuild") {
+    jList.autoRun("todoList.rebuild") {
         val visible = visibleItems()
         // track each item's done state so the list repaints on toggle
         visible.forEach { it[TodoItem::done].value }
