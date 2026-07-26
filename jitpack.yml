@@ -2,4 +2,4 @@ jdk:
   - openjdk21
 
 install:
-  - ./gradlew :flowik-core:publishToMavenLocal :flowik-swing:publishToMavenLocal :flowik-vaadin:publishToMavenLocal -Pversion=$VERSION -x test --no-daemon --stacktrace
+  - ./gradlew :flowik-core:publishToMavenLocal :flowik-swing:publishToMavenLocal :flowik-intellij:publishToMavenLocal :flowik-vaadin:publishToMavenLocal -Pversion=$VERSION -x test --no-daemon --stacktrace

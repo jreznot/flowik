@@ -21,8 +21,8 @@ import kotlin.reflect.KProperty0
  * an [ObservableProperty], usable with `Cell<JLabel>.bindText`,
  * `visibleIf`, `enabledIf`, `Cell.comment`-style one-way bindings.
  */
-fun <T> ReadableObservable<T>.asProperty(): ObservableProperty<T> =
-    FlowikProperty(this)
+fun <T> ReadableObservable<T>.asProperty(bindings: Bindings): ObservableProperty<T> =
+    FlowikProperty(this, bindings)
 
 /**
  * Exposes a writable Flowik observable as an [ObservableMutableProperty], which
@@ -34,16 +34,16 @@ fun <T> ReadableObservable<T>.asProperty(): ObservableProperty<T> =
  *
  * Writes are wrapped in [action], so a single UI event produces one batch.
  */
-fun <T> MutableObservable<T>.asProperty(): ObservableMutableProperty<T> =
-    FlowikProperty(this)
+fun <T> MutableObservable<T>.asProperty(bindings: Bindings): ObservableMutableProperty<T> =
+    FlowikProperty(this, bindings)
 
 /**
  * Same, for a property delegated to an observable — `store::name` instead of
  * `store.name`. Mirrors `flowik.core.unwrapBinding` used by the Swing/Vaadin
  * bindings.
  */
-fun <T> KProperty0<T>.asProperty(): ObservableMutableProperty<T> =
-    unwrapBinding(this).asProperty()
+fun <T> KProperty0<T>.asProperty(bindings: Bindings): ObservableMutableProperty<T> =
+    unwrapBinding(this).asProperty(bindings)
 
 /**
  * One implementation backs both factories: read-only sources are simply handed
@@ -64,7 +64,8 @@ fun <T> KProperty0<T>.asProperty(): ObservableMutableProperty<T> =
  *    the guard and re-set the text under the user's caret.
  */
 private class FlowikProperty<T>(
-    private val source: ReadableObservable<T>
+    private val source: ReadableObservable<T>,
+    bindings: Bindings
 ) : ObservableMutableProperty<T> {
 
     private val listeners = CopyOnWriteArrayList<(T) -> Unit>()
@@ -73,11 +74,12 @@ private class FlowikProperty<T>(
     private var lastFired: T = untracked { source.value }
 
     init {
-        reaction(
+        val subscription = reaction(
             name = "flowik -> ObservableProperty($source)",
             supply = { source.value },
             effect = { value -> fireChangeEvent(value) },
         )
+        bindings.register(subscription)
     }
 
     override fun get(): T = untracked { source.value }
@@ -102,31 +104,39 @@ private class FlowikProperty<T>(
     override fun toString(): String = "FlowikProperty($source)"
 }
 
+context(bindings: Bindings)
 fun <T : JTextComponent> Cell<T>.bindText(model: MutableObservable<String>): Cell<T> =
-    bindText(model.asProperty())
+    bindText(model.asProperty(bindings))
 
+context(bindings: Bindings)
 fun <T : JTextComponent> Cell<T>.bindText(prop: KProperty0<String>): Cell<T> =
-    bindText(prop.asProperty())
+    bindText(prop.asProperty(bindings))
 
+context(bindings: Bindings)
 fun <T : JTextComponent> Cell<T>.bindIntText(model: MutableObservable<Int>): Cell<T> =
-    bindIntText(model.asProperty())
+    bindIntText(model.asProperty(bindings))
 
+context(bindings: Bindings)
 fun <T : JToggleButton> Cell<T>.bindSelected(model: MutableObservable<Boolean>): Cell<T> =
-    bindSelected(model.asProperty())
+    bindSelected(model.asProperty(bindings))
 
+context(bindings: Bindings)
 fun <T : JToggleButton> Cell<T>.bindSelected(model: KProperty0<Boolean>): Cell<T> =
-    bindSelected(model.asProperty())
+    bindSelected(model.asProperty(bindings))
 
+context(bindings: Bindings)
 fun <T, C : ComboBox<T>> Cell<C>.bindItem(model: MutableObservable<T>): Cell<C> =
-    bindItem(model.asProperty())
+    bindItem(model.asProperty(bindings))
 
+context(bindings: Bindings)
 fun <T : JLabel> Cell<T>.bindText(model: ReadableObservable<String>): Cell<T> =
-    bindText(model.asProperty())
+    bindText(model.asProperty(bindings))
 
 /**
  * Derives the text from an arbitrary expression: `label("").text { "${a.value} / ${b.value}" }`.
  * No intermediate `computed` to declare, dependencies wire themselves.
  */
+context(bindings: Bindings)
 fun <T : JLabel> Cell<T>.text(expression: () -> String): Cell<T> =
     bindText(computed(expression))
 
@@ -138,17 +148,33 @@ fun <T : JLabel> Cell<T>.text(expression: () -> String): Cell<T> =
 // an actual false <-> true transition. The derivation is disposed with
 // `parent` by the adapter.
 
-fun <C : JComponent> Cell<C>.visibleIf(condition: () -> Boolean): Cell<C> =
-    visibleIf(computedStruct(condition).asProperty())
+context(bindings: Bindings)
+fun <C : JComponent> Cell<C>.visibleIf(condition: () -> Boolean): Cell<C> {
+    val computedDisposable = computedStruct(condition)
+    bindings.register(computedDisposable)
+    return visibleIf(computedDisposable.asProperty(bindings))
+}
 
-fun <C : JComponent> Cell<C>.enabledIf(condition: () -> Boolean): Cell<C> =
-    enabledIf(computedStruct(condition).asProperty())
+context(bindings: Bindings)
+fun <C : JComponent> Cell<C>.enabledIf(condition: () -> Boolean): Cell<C> {
+    val computedDisposable = computedStruct(condition)
+    bindings.register(computedDisposable)
+    return enabledIf(computedDisposable.asProperty(bindings))
+}
 
-fun Row.visibleIf(condition: () -> Boolean): Row =
-    visibleIf(computedStruct(condition).asProperty())
+context(bindings: Bindings)
+fun Row.visibleIf(condition: () -> Boolean): Row {
+    val computedDisposable = computedStruct(condition)
+    bindings.register(computedDisposable)
+    return visibleIf(computedDisposable.asProperty(bindings))
+}
 
-fun Row.enabledIf(condition: () -> Boolean): Row =
-    enabledIf(computedStruct(condition).asProperty())
+context(bindings: Bindings)
+fun Row.enabledIf(condition: () -> Boolean): Row {
+    val computedDisposable = computedStruct(condition)
+    bindings.register(computedDisposable)
+    return enabledIf(computedDisposable.asProperty(bindings))
+}
 
 /**
  * Binds any component aspect the UI DSL has no property for — icon,
@@ -163,13 +189,15 @@ fun Row.enabledIf(condition: () -> Boolean): Row =
  * icon(AllIcons.General.Warning).bindIn({ store.errors.size }) { isVisible = it > 0 }
  * ```
  */
+context(bindings: Bindings)
 fun <C : JComponent, V> Cell<C>.bindIn(read: () -> V, update: C.(V) -> Unit): Cell<C> = also {
     component.update(untracked(read))
-    reaction(
+    val subscription = reaction(
         name = "Cell.bindIn(${component.javaClass.simpleName})",
         supply = read,
         effect = { value -> component.update(value) },
     )
+    bindings.register(subscription)
 }
 
 /**
@@ -185,10 +213,12 @@ fun <C : JComponent, V> Cell<C>.bindIn(read: () -> V, update: C.(V) -> Unit): Ce
  * lost — so it runs on the writing thread. If background mutation is a
  * possibility, use [bindIn].
  */
+context(bindings: Bindings)
 fun <C : JComponent> Cell<C>.autoRun(name: String? = null, effect: C.() -> Unit): Cell<C> = also {
-    flowik.core.autoRun(name ?: "Cell.autoRun(${component.javaClass.simpleName})") {
+    val subscription = flowik.core.autoRun(name ?: "Cell.autoRun(${component.javaClass.simpleName})") {
         component.effect()
     }
+    bindings.register(subscription)
 }
 
 /**
@@ -215,10 +245,12 @@ fun <C : JComponent> Cell<C>.autoRun(name: String? = null, effect: C.() -> Unit)
  *
  * Same EDT precondition as [autoRun] — it mutates the layout in place.
  */
+context(bindings: Bindings)
 fun Placeholder.bindContent(name: String? = null, content: () -> JComponent?): Placeholder = apply {
-    autoRun(name ?: "Placeholder.bindContent") {
+    val subscription = autoRun(name ?: "Placeholder.bindContent") {
         component = content()
     }
+    bindings.register(subscription)
 }
 
 /**

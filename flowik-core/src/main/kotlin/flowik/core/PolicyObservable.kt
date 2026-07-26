@@ -7,8 +7,8 @@ import kotlin.reflect.KProperty
  * the delegated-wrapper counterpart of MobX's `observable.ref` and
  * `observable.struct` decorators.
  *
- * Internal: reach it through [observableRef], [observableStruct] or
- * [observableWith], all of which hand back a [MutableObservable].
+ * Internal: reach it through [observableRef], [observableStruct],
+ * all of which hand back a [MutableObservable].
  *
  * Two things distinguish it from [ObservableValue]:
  *

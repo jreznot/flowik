@@ -7,16 +7,19 @@ Flowik is a small Kotlin library that brings **MobX-style reactive state** to JV
 You define plain observable values and computed expressions; the UI subscribes itself and re-renders
 automatically when anything it reads changes — no listeners, no manual rebinding.
 
-The library is split into a framework-agnostic core and two UI-binding modules:
+The library is split into a framework-agnostic core and three UI-binding modules:
 
-| Module           | Purpose                                                                 |
-|------------------|-------------------------------------------------------------------------|
-| `flowik-core`    | Reactive primitives: observables, computed, autoRun, reactions, actions |
-| `flowik-swing`   | Bindings for Swing components (depends on `flowik-core`)                |
-| `flowik-vaadin`  | Bindings for Vaadin Flow components (depends on `flowik-core`)          |
+| Module            | Purpose                                                                 |
+|-------------------|-------------------------------------------------------------------------|
+| `flowik-core`     | Reactive primitives: observables, computed, autoRun, reactions, actions |
+| `flowik-swing`    | Bindings for Swing components                                           |
+| `flowik-vaadin`   | Bindings for Vaadin Flow components                                     |
+| `flowik-intellij` | Bindings for the IntelliJ Platform [Kotlin UI DSL][ij:ui-dsl]           |
 
-Most users only need **one** of `flowik-swing` or `flowik-vaadin` — both pull `flowik-core` in
-transitively.
+Most users only need **one** of `flowik-swing`, `flowik-vaadin` or `flowik-intellij` — all three pull
+`flowik-core` in transitively.
+
+[ij:ui-dsl]: https://plugins.jetbrains.com/docs/intellij/kotlin-ui-dsl-version-2.html
 
 ## The MobX concept
 
@@ -146,6 +149,32 @@ class CounterView : VerticalLayout() {
 The Vaadin bindings also expose two-way property binding for inputs — for example
 `TextField().apply { value(store::filter) }` keeps a `TextField` in sync with an observable string
 property.
+
+### Using it from a plugin (`flowik-intellij`)
+
+The IntelliJ Platform has its own declarative panel builder, the [Kotlin UI DSL][ij:ui-dsl]. Flowik
+does not replace it — it plugs into it, so `panel { row { ... } }` stays exactly as the platform
+documents it and only the *binding* changes:
+
+```kotlin
+import com.intellij.openapi.ui.DialogPanel
+import com.intellij.ui.dsl.builder.*
+import flowik.core.*
+import flowik.intellij.*
+
+fun counterPanel(): DialogPanel {
+    val store = CounterStore()
+    return context(Bindings()) {
+        panel {
+            row { label("").text { "Count: ${store.count.value} (×2 = ${store.doubled.value})" } }
+            row { button("Increment") { store.inc() } }
+        }
+    }
+}
+```
+
+The `Bindings` context argument collects the subscriptions the panel creates so they can be released
+together; the section below covers it, along with live vs. Apply-time binding.
 
 ## Core API at a glance
 
@@ -335,6 +364,153 @@ Logging goes through SLF4J, under the `flowik.core` category. `flowik-core` depe
 only — the application picks the binding (logback, `slf4j-simple`, …); with no binding on the
 classpath, SLF4J discards the messages.
 
+## The IntelliJ Platform and the Kotlin UI DSL
+
+`flowik-intellij` is a thin adapter between Flowik observables and the platform's own binding
+abstractions. The platform builds panels with the [Kotlin UI DSL][ij:ui-dsl] and binds cells to
+`ObservableMutableProperty` (live) or `MutableProperty` (deferred, Apply-time); Flowik supplies both
+from an observable, so a plugin can keep a MobX-style store and still write ordinary
+`panel { row { textField() } }` code.
+
+Nothing here reimplements the UI DSL. Every function is an extension on `Cell`, `Row` or
+`Placeholder`, so platform features — `align`, `comment`, `validationOnApply`, groups, collapsible
+rows — keep working unchanged.
+
+### `Bindings`: where the subscriptions live
+
+A UI DSL panel is built, not held: `panel { }` returns a `DialogPanel` and the builder receivers are
+gone. There is no place to hang the reactions a binding creates, so the bindings take a `Bindings`
+(from `flowik-core`) as a **context parameter** and register into it:
+
+```kotlin
+class MyToolWindow(parent: Disposable) {
+    private val store = ContactStore()
+    private val bindings = Bindings()
+
+    val panel: DialogPanel = context(bindings) {
+        panel {
+            row("Name:") { textField().bindText(store::name) }
+        }
+    }
+
+    init {
+        Disposer.register(parent) { bindings.dispose() }   // tool window closed -> reactions released
+    }
+}
+```
+
+`bindings.dispose()` disposes every reaction and eager derivation the panel created. Tying it to a
+platform `Disposable` — the tool window's, the `Configurable`'s, the `DialogWrapper`'s — is what keeps
+a closed panel from being kept alive by the store it read.
+
+For a panel whose lifetime is the whole IDE session, `context(Bindings()) { panel { ... } }` (as in the
+demo) is fine: the throwaway `Bindings` still satisfies the context parameter, it just never gets
+disposed.
+
+Context parameters are a Kotlin 2.2 preview feature, so both the module and its consumers compile
+with:
+
+```kotlin
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.compilerOptions {
+    freeCompilerArgs.set(listOf("-XXLanguage:+ContextParameters"))
+}
+```
+
+### The binding surface
+
+Everything below requires a `Bindings` in scope.
+
+| Binding                                        | Direction | Notes                                                      |
+|------------------------------------------------|-----------|------------------------------------------------------------|
+| `Cell<JTextComponent>.bindText(observable)`    | two-way   | also takes `store::name` (a delegated property)            |
+| `Cell<JTextComponent>.bindIntText(observable)` | two-way   | platform's `Int` parsing                                   |
+| `Cell<JToggleButton>.bindSelected(observable)` | two-way   | checkbox / radio button; also takes `store::flag`          |
+| `Cell<ComboBox<T>>.bindItem(observable)`       | two-way   |                                                            |
+| `Cell<JLabel>.bindText(observable)`            | one-way   | read-only sources (`Computed`) are accepted                |
+| `Cell<JLabel>.text { }`                        | one-way   | derives from an expression — no intermediate `computed`    |
+| `Cell.visibleIf { }` / `enabledIf { }`         | one-way   | `Row` has both too                                         |
+| `Cell.bindIn(read, update)`                    | one-way   | any aspect with no property: icon, foreground, tooltip …   |
+| `Cell.autoRun { }`                             | one-way   | read and write in one block, like a plain `autoRun`        |
+| `Placeholder.bindContent { }`                  | one-way   | rebuilds a sub-panel — the DSL's `ForEach` / `SwitchPanel` |
+
+```kotlin
+context(Bindings()) {
+    panel {
+        row("Name:") { textField().bindText(store::name) }
+        row("Email:") {
+            textField()
+                .bindText(store::email)
+                .enabledIf { store.name.isNotBlank() }        // predicate, not a property
+        }
+        row { checkBox("Subscribe").bindSelected(store::subscribed) }
+        row { label("").text(store::greeting) }
+        row { button("Reset") { store.reset() } }.visibleIf { store.isValid }
+    }
+}
+```
+
+The `visibleIf` / `enabledIf` predicates are the shape worth noticing: no `ObservableProperty` to
+build, no `computed` to declare and dispose. They read the store directly and re-apply only on an
+actual `false <-> true` transition — internally `computedStruct`, not `computed`, so an unrelated write
+does not trigger a layout pass.
+
+`bindIn` and `autoRun` are the escape hatches for aspects the UI DSL has no `bindXxx` for:
+
+```kotlin
+icon(AllIcons.General.Warning).bindIn({ store.errors.size }) { isVisible = it > 0 }
+cell(myChart).autoRun { model = store.series.value; repaint() }
+```
+
+They differ in threading. `bindIn` splits the two halves — the tracked `read` runs on whichever thread
+wrote the store, `update` is applied on the EDT — so it is safe when a background task mutates the
+store. `autoRun` runs the whole block on the writing thread (deferring it would leave the tracking
+scope and lose the dependencies), so it requires EDT mutation, which `runInAction` guarantees.
+
+`Placeholder.bindContent` rebuilds a whole region when the observables it reads change, giving each
+rebuild a fresh child `Disposable` so the discarded sub-panel's bindings are released rather than
+accumulating:
+
+```kotlin
+lateinit var body: Placeholder
+val root = panel {
+    row { body = placeholder() }
+}
+body.bindContent {                    // after the panel is built: `panel` is the top-level
+    panel {                           // builder here, so the lambda returns a DialogPanel
+        for (item in store.items) {
+            row { label("").bindText(item[Item::title]) }
+        }
+    }
+}
+```
+
+### Live or on Apply
+
+The two contracts the platform offers are both available, and the choice is about semantics rather
+than convenience:
+
+- **`asProperty(bindings)`** → `ObservableMutableProperty`. The store is written on every keystroke and
+  click, and store changes reach the component immediately. This is what a tool window or an inspector
+  wants — there is no OK button to wait for. All the `bindXxx` extensions above use it.
+- **`asMutableProperty()`** → `MutableProperty`. The deferred contract: the component is filled from the
+  store by `DialogPanel.reset()`, the store is written by `apply()`, and `isModified()` compares the
+  two. This is what a `Configurable` needs for OK/Apply/Cancel to mean anything.
+
+```kotlin
+row("Timeout:") { intTextField().bindIntText(settings.timeout.asMutableProperty()) }  // Apply-time
+row { checkBox("Live preview").bindSelected(viewState::preview) }                     // immediate
+```
+
+Both can be mixed in one panel: bind the persisted settings deferred and the ephemeral view state
+(filters, expanded nodes, previews) live. `asProperty` also works one-way, on any `ReadableObservable`
+— hand a `Computed` to `Cell.visibleIf`, `Row.enabledIf`, or any other platform API that takes an
+`ObservableProperty`.
+
+Writes through either wrapper are wrapped in `action`, so one UI event produces one batch, and reads go
+through `untracked`: the platform reads properties from arbitrary places, including from inside a
+derivation that is rebuilding a panel, and those reads must not silently become dependencies of it.
+
 ## Full examples and source
 
 Real, runnable demos live in the repo:
@@ -343,12 +519,15 @@ Real, runnable demos live in the repo:
   keyboard navigation, and conditional visibility.
 - [`flowik-vaadin-demo`](flowik-vaadin-demo) — the same Todo app on Vaadin Flow with property
   delegates and two-way input bindings.
+- [`flowik-intellij-demo`](flowik-intellij-demo) — an IDE plugin with a tool window built from the
+  Kotlin UI DSL: live two-way bindings, a computed label, and a conditionally visible row
 
 Library sources:
 
 - [`flowik-core`](flowik-core/src/main/kotlin/flowik/core) — reactive primitives.
 - [`flowik-swing`](flowik-swing/src/main/kotlin/flowik/swing) — Swing component bindings.
 - [`flowik-vaadin`](flowik-vaadin/src/main/kotlin/flowik/vaadin) — Vaadin Flow component bindings.
+- [`flowik-intellij`](flowik-intellij/src/main/kotlin/flowik/intellij) — Kotlin UI DSL bindings.
 
 ## License
 

@@ -2,10 +2,7 @@ package org.example
 
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.panel
-import flowik.core.Store
-import flowik.core.action
-import flowik.core.computed
-import flowik.core.observable
+import flowik.core.*
 import flowik.intellij.*
 
 /**
@@ -32,24 +29,26 @@ fun ContactPanel(): DialogPanel {
         }
     }
 
-    return panel {
-        row("Name:") {
-            textField().bindText(store::name)
+    return context(Bindings()) {
+        panel {
+            row("Name:") {
+                textField().bindText(store::name)
+            }
+            row("Email:") {
+                textField()
+                    .bindText(store::email)
+                    .enabledIf { store.name.isNotBlank() }
+            }
+            row {
+                checkBox("Subscribe to the newsletter")
+                    .bindSelected(store::subscribed)
+            }
+            row {
+                label("").text(store::greeting)
+            }
+            row {
+                button("Reset") { store.reset() }
+            }.visibleIf { store.isValid }
         }
-        row("Email:") {
-            textField()
-                .bindText(store::email)
-                .enabledIf { store.name.isNotBlank() }
-        }
-        row {
-            checkBox("Subscribe to the newsletter")
-                .bindSelected(store::subscribed)
-        }
-        row {
-            label("").text(store::greeting)
-        }
-        row {
-            button("Reset") { store.reset() }
-        }.visibleIf { store.isValid }
     }
 }

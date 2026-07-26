@@ -7,7 +7,7 @@ val publishedModules = setOf("flowik-core", "flowik-swing", "flowik-vaadin", "fl
 allprojects {
     group = "com.github.jreznot.flowik"
     version = (findProperty("version") as String?)?.takeUnless { it == "unspecified" }
-        ?: "0.2.0-SNAPSHOT"
+        ?: "0.3.0-SNAPSHOT"
 }
 
 subprojects {

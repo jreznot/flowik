@@ -12,3 +12,16 @@ interface Disposable {
     /** Release all subscriptions and prevent future runs. */
     fun dispose()
 }
+
+class Bindings : Disposable {
+    private val disposables = mutableListOf<Disposable>()
+
+    fun register(disposable: Disposable) {
+        disposables.add(disposable)
+    }
+
+    override fun dispose() {
+        disposables.forEach { it.dispose() }
+        disposables.clear()
+    }
+}

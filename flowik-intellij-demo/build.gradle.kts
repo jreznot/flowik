@@ -1,4 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
@@ -18,4 +19,9 @@ dependencies {
         intellijIdea("2026.1.3")
         testFramework(TestFrameworkType.Platform)
     }
+}
+
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.compilerOptions {
+    freeCompilerArgs.set(listOf("-XXLanguage:+ContextParameters"))
 }
