@@ -1,4 +1,6 @@
-package org.example
+@file:Suppress("UnstableApiUsage")
+
+package flowik.intellij
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.observable.properties.ObservableMutableProperty
@@ -73,13 +75,6 @@ import flowik.core.Disposable as FlowikDisposable
  *   parent `Disposable`: `toolWindow.disposable`, `DialogWrapper.disposable`,
  *   `Configurable.disposeUIResources`, or a child from `Disposer.newDisposable`.
  *   Without it the store keeps the whole component tree alive.
- *
- * Suggested placement: a new `flowik-intellij` module with
- * `api(project(":flowik-core"))` and the IntelliJ platform as `compileOnly`, so
- * plugins get the bridge without the demo. (Note for the demo module: a plain
- * `implementation(project(":flowik-core"))` also drags coroutines/slf4j onto the
- * plugin classpath — a real module should mark those `compileOnly` and rely on
- * the platform's own copies.)
  */
 
 /**
@@ -265,7 +260,7 @@ class FlowikBindings(private val parent: Disposable) {
      *
      * [read] is *tracked* (its observable reads become the dependencies) and
      * runs on whichever thread wrote the store; [update] receives the value on
-     * the EDT. Splitting the two is what makes this thread-safe — see [reactive]
+     * the EDT. Splitting the two is what makes this thread-safe — see [autoRun]
      * for the shorter, EDT-only form.
      *
      * ```
@@ -283,11 +278,10 @@ class FlowikBindings(private val parent: Disposable) {
     }
 
     /**
-     * The one-lambda variant: reads and writes in the same block, exactly like a
-     * Flowik `autoRun`.
+     * The one-lambda variant: reads and writes in the same block, exactly like a Flowik `autoRun`.
      *
      * ```
-     * cell(myChart).reactive { model = store.series.value; repaint() }
+     * cell(myChart).autoRun { model = store.series.value; repaint() }
      * ```
      *
      * Precondition: the store must be mutated on the EDT (which
@@ -296,8 +290,8 @@ class FlowikBindings(private val parent: Disposable) {
      * lost — so it runs on the writing thread. If background mutation is a
      * possibility, use [bindIn].
      */
-    fun <C : JComponent> Cell<C>.reactive(name: String? = null, effect: C.() -> Unit): Cell<C> = apply {
-        val subscription = autoRun(name ?: "Cell.reactive(${component.javaClass.simpleName})") {
+    fun <C : JComponent> Cell<C>.autoRun(name: String? = null, effect: C.() -> Unit): Cell<C> = apply {
+        val subscription = flowik.core.autoRun(name ?: "Cell.autoRun(${component.javaClass.simpleName})") {
             component.effect()
         }
         parent.onDispose { subscription.dispose() }
@@ -323,7 +317,7 @@ class FlowikBindings(private val parent: Disposable) {
      * }
      * ```
      *
-     * Same EDT precondition as [reactive] — it mutates the layout in place.
+     * Same EDT precondition as [autoRun] — it mutates the layout in place.
      */
     fun Placeholder.bindContent(name: String? = null, content: FlowikBindings.() -> JComponent?): Placeholder = apply {
         var previous: Disposable? = null

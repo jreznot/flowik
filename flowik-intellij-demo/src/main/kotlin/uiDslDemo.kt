@@ -7,6 +7,7 @@ import flowik.core.Store
 import flowik.core.action
 import flowik.core.computed
 import flowik.core.observable
+import flowik.intellij.FlowikBindings
 
 /**
  * Live binding — a tool window / inspector panel. Every edit lands in the store

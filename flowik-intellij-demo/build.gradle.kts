@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":flowik-core"))
+    implementation(project(":flowik-intellij"))
     testImplementation("junit:junit:4.13.2")
 
     intellijPlatform {
