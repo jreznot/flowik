@@ -1,9 +1,5 @@
 package flowik.core
 
-import java.util.function.Supplier
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
-
 /**
  * An [ObservableList] that automatically wraps each added [T] in an
  * [ObservableMap], so callers work with plain data values while the list
@@ -26,8 +22,7 @@ import kotlin.reflect.KProperty
  * a reaction that must re-run on an element property reads that property, the
  * way the [ObservableListOps] transforms do.
  */
-class ObservableMapList<T : Any>(initial: List<T> = emptyList()) : ObservableList<ObservableMap<T>>(),
-    ReadWriteProperty<Any?, MutableList<T>>, Supplier<List<ObservableMap<T>>> {
+class ObservableMapList<T : Any>(initial: List<T> = emptyList()) : ObservableList<ObservableMap<T>>() {
 
     /**
      * One entry per element *occurrence*, keyed by identity — the same wrapper can
@@ -85,49 +80,6 @@ class ObservableMapList<T : Any>(initial: List<T> = emptyList()) : ObservableLis
         val index = elementSubscriptions.indexOfFirst { (element, _) -> element === item }
         if (index >= 0) elementSubscriptions.removeAt(index).second.dispose()
     }
-
-    /**
-     * A [MutableList] view that delegates mutating operations back to this
-     * [ObservableMapList] instance, keeping reactive tracking intact.
-     */
-    private val delegate: MutableList<T> by lazy { DelegateList() }
-
-    @Suppress("UNCHECKED_CAST")
-    override fun getValue(thisRef: Any?, property: KProperty<*>): MutableList<T> {
-        return delegate
-    }
-
-    override fun setValue(thisRef: Any?, property: KProperty<*>, value: MutableList<T>) {
-        setAll(value)
-    }
-
-    /**
-     * Mutable list implementation that delegates add/remove/clear/size and
-     * other read operations to the owning [ObservableMapList] instance.
-     */
-    private inner class DelegateList : AbstractMutableList<T>() {
-        override val size: Int
-            get() = this@ObservableMapList.size
-
-        override fun get(index: Int): T = this@ObservableMapList[index].snapshot
-
-        override fun add(index: Int, element: T) {
-            this@ObservableMapList.add(index, element)
-        }
-
-        override fun removeAt(index: Int): T {
-            val removed = this@ObservableMapList.removeAt(index)
-            return removed.snapshot
-        }
-
-        override fun set(index: Int, element: T): T {
-            val old = this@ObservableMapList[index].snapshot
-            this@ObservableMapList[index] = ObservableMap(element)
-            return old
-        }
-
-        override fun clear() {
-            this@ObservableMapList.clear()
-        }
-    }
 }
+
+typealias ObservableMaps<T> = List<ObservableMap<T>>

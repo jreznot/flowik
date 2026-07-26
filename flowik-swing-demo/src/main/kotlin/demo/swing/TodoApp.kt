@@ -20,44 +20,15 @@ fun main() {
 
 data class TodoItem(val text: String, val done: Boolean = false)
 
-class TodoStore {
-    val todos = observables<TodoItem>()
-    val filter = observable("", name = "filter")
-    val showCompleted = observable(true, name = "showCompleted")
-    val showFilter = observable(false, name = "showFilter")
-
-    val visibleItems = todos.filter { item: ObservableMap<TodoItem> ->
-        val filterText = filter.value.lowercase()
-        (showCompleted.value || !item[TodoItem::done].value)
-            && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
-    }
-
-    private val doneTodos = todos.filter { it[TodoItem::done].value }
-
-    val totalCount = computed { todos.size }
-    val doneCount  = computed { doneTodos.value.size }
-    val statusText = computed { "${doneCount.value} / ${totalCount.value} completed" }
-
-    fun addItem(text: String) = action {
-        if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
-    }
-
-    fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
-
-    fun toggleItem(item: ObservableMap<TodoItem>) = action {
-        item[TodoItem::done].value = !item[TodoItem::done].value
-    }
-
-    fun clearCompleted() = action {
-        doneTodos.value.forEach { todos.remove(it) }
-    }
-}
-
 /**
  * A JList-based to-do list with keyboard navigation.
  * Arrow keys navigate, Space toggles done, Delete/Backspace removes.
  */
-private fun todoListPanel(store: TodoStore): JScrollPane {
+private fun TodoListPanel(
+    visibleItems: () -> ObservableMaps<TodoItem>,
+    toggleItem: (ObservableMap<TodoItem>) -> Unit,
+    removeItem: (ObservableMap<TodoItem>) -> Unit
+): JScrollPane {
     val listModel = DefaultListModel<ObservableMap<TodoItem>>()
     val jList = JList(listModel).apply {
         cellRenderer = TodoCellRenderer()
@@ -65,7 +36,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
     }
 
     autoRun("todoList.rebuild") {
-        val visible = store.visibleItems.value
+        val visible = visibleItems()
         // track each item's done state so the list repaints on toggle
         visible.forEach { it[TodoItem::done].value }
 
@@ -86,7 +57,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
     )
     jList.actionMap.put("toggleDone", object : AbstractAction() {
         override fun actionPerformed(e: ActionEvent?) {
-            jList.selectedValue?.let { store.toggleItem(it) }
+            jList.selectedValue?.let { toggleItem(it) }
         }
     })
 
@@ -101,7 +72,7 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
         override fun actionPerformed(e: ActionEvent?) {
             val idx = jList.selectedIndex
             val item = jList.selectedValue ?: return
-            store.removeItem(item)
+            removeItem(item)
             // Keep selection near the removed position
             SwingUtilities.invokeLater {
                 if (listModel.size() > 0) {
@@ -120,11 +91,11 @@ private fun todoListPanel(store: TodoStore): JScrollPane {
             val relativeX = e.point.x - cellBounds.x
             // Check if click is in the checkbox area (first ~30px)
             if (relativeX <= 30) {
-                store.toggleItem(listModel.getElementAt(index))
+                toggleItem(listModel.getElementAt(index))
             }
             // Check if click is in the remove "✕" area (last ~30px)
             else if (relativeX >= cellBounds.width - 30) {
-                store.removeItem(listModel.getElementAt(index))
+                removeItem(listModel.getElementAt(index))
             }
         }
     })
@@ -186,7 +157,39 @@ fun todoDemo() {
     SwingUtilities.invokeLater {
         FlatDarkFlatIJTheme.setup()
 
-        val store = TodoStore()
+        val store = object : Store {
+            val todos = observables<TodoItem>()
+
+            var filter by observable("", name = "filter")
+            var showCompleted by observable(true, name = "showCompleted")
+            var showFilter by observable(false, name = "showFilter")
+
+            val visibleItems by todos.filter { item: ObservableMap<TodoItem> ->
+                val filterText = filter.lowercase()
+                (showCompleted || !item[TodoItem::done].value)
+                        && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
+            }
+
+            private val doneTodos by todos.filter { it[TodoItem::done].value }
+
+            val totalCount by computed { todos.size }
+            val doneCount by computed { doneTodos.size }
+            val statusText by computed { "$doneCount / $totalCount completed" }
+
+            fun addItem(text: String) = action {
+                if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
+            }
+
+            fun removeItem(item: ObservableMap<TodoItem>) = action { todos.remove(item) }
+
+            fun toggleItem(item: ObservableMap<TodoItem>) = action {
+                item[TodoItem::done].value = !item[TodoItem::done].value
+            }
+
+            fun clearCompleted() = action {
+                doneTodos.forEach { todos.remove(it) }
+            }
+        }
 
         store.addItem("Learn Kotlin reactive programming")
         store.addItem("Build Reaktor component library")
@@ -201,7 +204,7 @@ fun todoDemo() {
                     }
                     hglue()
                     Button("v") {
-                        store.showFilter.value = !store.showFilter.value
+                        store.showFilter = !store.showFilter
                     }
                 }
             }
@@ -210,11 +213,11 @@ fun todoDemo() {
                 borderPanel(gap = 4) {
                     north {
                         vbox(gap = 4) {
-                            Panel(visible = store.showFilter) {
+                            Panel(visible = store::showFilter) {
                                 hbox(gap = 6) {
                                     Label("Filter:")
-                                    TextField(store.filter, columns = 18)
-                                    CheckBox(store.showCompleted, "Show completed")
+                                    TextField(store::filter, columns = 18)
+                                    CheckBox(store::showCompleted, "Show completed")
                                 }
                             }
 
@@ -223,7 +226,13 @@ fun todoDemo() {
                     }
 
                     center {
-                        add(todoListPanel(store))
+                        add(
+                            TodoListPanel(
+                                store::visibleItems,
+                                store::toggleItem,
+                                store::removeItem
+                            )
+                        )
                     }
 
                     south {
@@ -244,7 +253,7 @@ fun todoDemo() {
 
             south {
                 hbox(gap = 6) {
-                    Label(store.statusText)
+                    Label(store::statusText)
                     hglue()
                     Button("Clear completed") { store.clearCompleted() }
                 }

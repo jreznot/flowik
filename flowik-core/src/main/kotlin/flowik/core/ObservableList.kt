@@ -1,13 +1,13 @@
 package flowik.core
 
-import java.util.function.Supplier
+import kotlin.reflect.KProperty
 
 /**
  * A reactive list that emits fine-grained change events and integrates
  * with the auto-tracking system. Any reaction that reads [items], [size],
  * or iterates the list will re-run when the list is mutated.
  */
-open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Observable, Supplier<List<T>> {
+open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, MutableObservable<List<T>> {
 
     /** Internal version counter — observing this is how reactions track "the list changed". */
     private val version = ObservableValue(0L, name = "list-version")
@@ -98,7 +98,7 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Obse
         }
     }
 
-    fun onChange(listener: (ListChange<T>) -> Unit) : Disposable {
+    fun onChange(listener: (ListChange<T>) -> Unit): Disposable {
         changeListeners.add(listener)
 
         return object : Disposable {
@@ -138,6 +138,22 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Obse
     }
 
     override fun get(): List<T> = backing.toList()
+
+    override fun getValue(thisRef: Any?, property: KProperty<*>): List<T> = backing.toList()
+
+    override fun setValue(
+        thisRef: Any?,
+        property: KProperty<*>,
+        value: List<T>
+    ) {
+        setAll(value.toList())
+    }
+
+    override var value: List<T>
+        get() = backing.toList()
+        set(value) {
+            setAll(value.toList())
+        }
 }
 
 /** Fine-grained change events for [ObservableList]. */
