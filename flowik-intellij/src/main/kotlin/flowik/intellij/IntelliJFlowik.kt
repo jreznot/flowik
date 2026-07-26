@@ -277,7 +277,7 @@ fun <C : JComponent> Cell<C>.autoRun(name: String? = null, effect: C.() -> Unit)
  * body.bindContent {
  *     panel {
  *         for (item in store.items) {
- *             row { label("").bindText(item[Item::title]) }
+ *             row { label("").bindText(item.property(Item::title)) }
  *         }
  *     }
  * }

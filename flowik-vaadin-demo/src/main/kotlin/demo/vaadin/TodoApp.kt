@@ -19,40 +19,38 @@ import flowik.vaadin.*
 
 data class TodoItem(val text: String, val done: Boolean = false)
 
-class TodoStore {
-    private val todos = observables<TodoItem>()
-
-    var filter by observable("", name = "filter")
-    var showCompleted by observable(true, name = "showCompleted")
-    var showFilter by observable(false, name = "showFilter")
-
-    val visibleItems by todos.filter { item: ObservableEntity<TodoItem> ->
-        val filterText = filter.lowercase()
-        (showCompleted || !item[TodoItem::done].value)
-                && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
-    }
-
-    private val doneTodos by todos.filter { it[TodoItem::done].value }
-
-    val totalCount by computed { todos.size }
-    val doneCount by computed { doneTodos.size }
-    val statusText by computed { "$doneCount / $totalCount completed" }
-
-    fun addItem(text: String) = action {
-        if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
-    }
-
-    fun removeItem(item: ObservableEntity<TodoItem>) = action { todos.remove(item) }
-
-    fun clearCompleted() = action {
-        doneTodos.forEach { todos.remove(it) }
-    }
-}
-
 @Route("todo")
 @PageTitle("Todo")
 class TodoView : VerticalLayout() {
-    private val store = TodoStore()
+    private val store = object : Store {
+        private val todos = observables<TodoItem>()
+
+        var filter by observable("", name = "filter")
+        var showCompleted by observable(true, name = "showCompleted")
+        var showFilter by observable(false, name = "showFilter")
+
+        val visibleItems by todos.filter { item: ObservableEntity<TodoItem> ->
+            val filterText = filter.lowercase()
+            (showCompleted || !item[TodoItem::done])
+                    && (filterText.isEmpty() || item[TodoItem::text].lowercase().contains(filterText))
+        }
+
+        private val doneTodos by todos.filter { it[TodoItem::done] }
+
+        val totalCount by computed { todos.size }
+        val doneCount by computed { doneTodos.size }
+        val statusText by computed { "$doneCount / $totalCount completed" }
+
+        fun addItem(text: String) = action {
+            if (text.isNotBlank()) todos.add(TodoItem(text.trim()))
+        }
+
+        fun removeItem(item: ObservableEntity<TodoItem>) = action { todos.remove(item) }
+
+        fun clearCompleted() = action {
+            doneTodos.forEach { todos.remove(it) }
+        }
+    }
 
     init {
         store.addItem("Learn Kotlin reactive programming")
@@ -164,15 +162,15 @@ class TodoView : VerticalLayout() {
         isSpacing = true
 
         val checkbox = Checkbox().apply {
-            checked(item[TodoItem::done])
+            checked(item.property(TodoItem::done))
         }
 
         val text = Span().apply {
-            text(item[TodoItem::text])
+            text(item.property(TodoItem::text))
             element.style.set("flex-grow", "1")
 
             autoRun("TodoRow.style") {
-                val done = item[TodoItem::done].value
+                val done = item[TodoItem::done]
                 style.set("text-decoration", if (done) "line-through" else "none")
                 style.set("color", if (done) "var(--lumo-secondary-text-color)" else "")
             }

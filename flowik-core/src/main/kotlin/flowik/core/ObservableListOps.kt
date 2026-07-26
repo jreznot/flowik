@@ -7,7 +7,7 @@ package flowik.core
 //
 // Any observable read inside a transform / predicate lambda is auto-tracked,
 // meaning the derived updates when list contents change OR when an observed
-// property of an element changes (e.g., item[Foo::bar].value inside a filter).
+// property of an element changes (e.g., item[Foo::bar] inside a filter).
 
 /**
  * Returns a [Computed] list where each element has been transformed by [transform].
@@ -34,8 +34,8 @@ fun <T, R> ObservableList<T>.flatMap(transform: (T) -> Iterable<R>): Computed<Li
 // composed without an intermediate ObservableList:
 //
 //   val visibleNames: Computed<List<String>> = todos
-//       .filter { !it[TodoItem::done].value }
-//       .map    { it[TodoItem::text].value  }
+//       .filter { !it[TodoItem::done] }
+//       .map    { it[TodoItem::text] }
 
 /**
  * Returns a [Computed] list where each element of this derived list has been

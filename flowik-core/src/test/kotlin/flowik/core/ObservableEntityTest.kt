@@ -33,18 +33,24 @@ class ObservableEntityTest {
     fun `scalar and list properties stay shallow`() {
         val team = team()
 
-        assertEquals("A-Team", team[Team::name].value)
-        assertEquals(listOf("core", "backend"), team[Team::tags].items)
-        assertEquals(listOf("core", "backend"), team.list<String>("tags").items)
+        assertEquals("A-Team", team[Team::name])
+        assertEquals(listOf("core", "backend"), team[Team::tags])
         assertEquals("A-Team", team.get<String>("name").value)
+    }
+
+    @Test
+    fun `a list property can be exposed as a shallow ObservableList`() {
+        val team = team()
+
+        assertEquals(listOf("core", "backend"), team.list<String>("tags").items)
     }
 
     @Test
     fun `an object property is atomic unless decomposed`() {
         val team = team()
-        val address: ObservableValue<Address> = team[Team::address]
+        val address: Address = team[Team::address]
 
-        assertEquals(Address("Munich", "80331"), address.value)
+        assertEquals(Address("Munich", "80331"), address)
     }
 
     // Deep access — nested objects
@@ -56,16 +62,16 @@ class ObservableEntityTest {
 
         var cityRuns = 0
         var zipRuns = 0
-        autoRun { address[Address::city].value; cityRuns++ }
-        autoRun { address[Address::zip].value; zipRuns++ }
+        autoRun { address[Address::city]; cityRuns++ }
+        autoRun { address[Address::zip]; zipRuns++ }
         assertEquals(1, cityRuns)
         assertEquals(1, zipRuns)
 
-        address[Address::city].value = "Berlin"
+        address[Address::city] = "Berlin"
 
         assertEquals(2, cityRuns)
         assertEquals(1, zipRuns, "the zip atom is untouched by a city write")
-        assertEquals("Berlin", address[Address::city].value)
+        assertEquals("Berlin", address[Address::city])
     }
 
     @Test
@@ -74,35 +80,36 @@ class ObservableEntityTest {
 
         assertSame(team.nested(Team::address), team.nested(Team::address))
         assertSame(team.nested(Team::address), team.nested("address"))
-        assertSame(team.nested(Team::address)[Address::city], team[Team::address, Address::city])
+        assertSame(team.property(Team::name), team.get<String>("name"))
     }
 
     @Test
-    fun `a typed path reaches the same atom as a manual walk`() {
+    fun `the typed and the string accessor reach the same atom`() {
         val team = team()
+        val address = team.nested(Team::address)
 
-        team[Team::address, Address::city].value = "Berlin"
+        address[Address::city] = "Berlin"
 
-        assertEquals("Berlin", team.nested(Team::address)[Address::city].value)
+        assertEquals("Berlin", address.get<String>("city").value)
     }
 
     @Test
-    fun `a typed path reaches a shallow list two levels down`() {
+    fun `a nested walk reaches a shallow list two levels down`() {
         val company = observable(Company("Acme", Team("A-Team", Address("Munich", "80331"), tags = listOf("core"))))
 
-        val tags: ObservableList<String> = company[Company::team, Team::tags]
+        val tags: ObservableList<String> = company.nested(Company::team).list("tags")
 
         assertEquals(listOf("core"), tags.items)
     }
 
     @Test
-    fun `a typed path walks three levels`() {
+    fun `a nested walk goes three levels down`() {
         val company = observable(Company("Acme", Team("A-Team", Address("Munich", "80331"))))
 
-        val city: ObservableValue<String> = company[Company::team, Team::address, Address::city]
+        val city: ObservableValue<String> = company.nested(Company::team).nested(Team::address).property(Address::city)
         city.value = "Berlin"
 
-        assertEquals("Berlin", company.nested(Company::team).nested(Team::address)[Address::city].value)
+        assertEquals("Berlin", company.nested(Company::team).nested(Team::address)[Address::city])
     }
 
     @Test
@@ -110,8 +117,8 @@ class ObservableEntityTest {
         val company = observable(Company("Acme", Team("A-Team", Address("Munich", "80331"))))
         val cities = mutableListOf<String>()
 
-        autoRun { cities.add(company.nested(Company::team).nested(Team::address)[Address::city].value) }
-        company[Company::team, Team::address, Address::city].value = "Berlin"
+        autoRun { cities.add(company.nested(Company::team).nested(Team::address)[Address::city]) }
+        company.nested(Company::team).nested(Team::address)[Address::city] = "Berlin"
 
         assertEquals(listOf("Munich", "Berlin"), cities)
     }
@@ -124,15 +131,15 @@ class ObservableEntityTest {
         val members = team.nestedList(Team::members)
 
         assertEquals(2, members.size)
-        assertEquals("Alice", members[0][Member::name].value)
+        assertEquals("Alice", members[0][Member::name])
 
         var activeRuns = 0
-        autoRun { members[0][Member::active].value; activeRuns++ }
+        autoRun { members[0][Member::active]; activeRuns++ }
 
-        members[0][Member::active].value = false
+        members[0][Member::active] = false
 
         assertEquals(2, activeRuns)
-        assertFalse(members[0][Member::active].value)
+        assertFalse(members[0][Member::active])
     }
 
     @Test
@@ -156,7 +163,7 @@ class ObservableEntityTest {
         autoRun { members.items; runs++ }
         assertEquals(1, runs)
 
-        members[0][Member::active].value = false
+        members[0][Member::active] = false
 
         assertEquals(1, runs, "the contents did not change — only a property inside an element")
     }
@@ -168,11 +175,11 @@ class ObservableEntityTest {
         )
 
         val team = company.nested(Company::team)
-        team.nestedList(Team::members)[0][Member::name].value = "Alicia"
-        team[Team::address, Address::city].value = "Berlin"
+        team.nestedList(Team::members)[0][Member::name] = "Alicia"
+        team.nested(Team::address)[Address::city] = "Berlin"
 
-        assertEquals("Alicia", team.nestedList(Team::members)[0][Member::name].value)
-        assertEquals("Berlin", company[Company::team, Team::address, Address::city].value)
+        assertEquals("Alicia", team.nestedList(Team::members)[0][Member::name])
+        assertEquals("Berlin", company.nested(Company::team).nested(Team::address)[Address::city])
     }
 
     // Propagation to subscribers
@@ -188,13 +195,13 @@ class ObservableEntityTest {
         var notifications = 0
         company.subscribe { notifications++ }
 
-        company[Company::name].value = "Acme Inc"
+        company[Company::name] = "Acme Inc"
         assertEquals(1, notifications, "own property")
 
-        team[Team::address, Address::city].value = "Berlin"
+        team.nested(Team::address)[Address::city] = "Berlin"
         assertEquals(2, notifications, "two levels down")
 
-        members[0][Member::name].value = "Alicia"
+        members[0][Member::name] = "Alicia"
         assertEquals(3, notifications, "inside a list element")
 
         members.add(Member("Bob"))
@@ -212,7 +219,7 @@ class ObservableEntityTest {
         members.removeAt(0)
         assertEquals(1, notifications, "the removal itself")
 
-        alice[Member::name].value = "Alicia"
+        alice[Member::name] = "Alicia"
 
         assertEquals(1, notifications, "the wrapper left the list and is no longer watched")
     }
@@ -224,15 +231,15 @@ class ObservableEntityTest {
         var runs = 0
 
         autoRun {
-            address[Address::city].value
-            address[Address::zip].value
+            address[Address::city]
+            address[Address::zip]
             runs++
         }
         assertEquals(1, runs)
 
         action {
-            address[Address::city].value = "Berlin"
-            address[Address::zip].value = "10115"
+            address[Address::city] = "Berlin"
+            address[Address::zip] = "10115"
         }
 
         assertEquals(2, runs, "both writes coalesce into one re-run")
@@ -243,7 +250,7 @@ class ObservableEntityTest {
     @Test
     fun `a property cannot be both an atom and a nested map`() {
         val team = team()
-        team[Team::address].value
+        team[Team::address]
 
         val failure = assertFailsWith<IllegalStateException> { team.nested(Team::address) }
         assertTrue("nested(\"address\")" in failure.message!!, failure.message!!)
@@ -270,7 +277,7 @@ class ObservableEntityTest {
     @Test
     fun `a shallow list stays shallow`() {
         val team = team()
-        team[Team::tags]
+        team.list<String>("tags")
 
         assertFailsWith<IllegalStateException> { team.nestedList<Member>("tags") }
     }

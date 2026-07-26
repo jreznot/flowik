@@ -15,8 +15,9 @@ import kotlin.reflect.jvm.isAccessible
  *
  * ### Shallow access — one atom per property
  *
- * - scalar properties → [ObservableValue], via `team[Team::name]` or [get]
- * - [List] properties → [ObservableList] of plain elements, via `team[Team::tags]` or [list]
+ * - scalar properties → [ObservableValue], via [property] — read and written
+ *   directly as `team[Team::name]`
+ * - [List] properties → [ObservableList] of plain elements, via [list]
  *
  * ### Deep access — the nested value is decomposed in turn
  *
@@ -42,14 +43,14 @@ import kotlin.reflect.jvm.isAccessible
  *
  * val team = observable(Team("A-Team", Address("Munich", "80331"), listOf(Member("Alice"))))
  *
- * // Type-safe — the compiler picks the right overload automatically
- * val name:    ObservableValue<String> = team[Team::name]
- * val address: ObservableMap<Address>  = team.nested(Team::address)
- * val members: ObservableMapList<Member> = team.nestedList(Team::members)
+ * // Type-safe — the property reference fixes the value type
+ * val name:    String                      = team[Team::name]
+ * val nameAtom: ObservableValue<String>    = team.property(Team::name)
+ * val address: ObservableEntity<Address>   = team.nested(Team::address)
+ * val members: ObservableEntityList<Member> = team.nestedList(Team::members)
  *
- * address[Address::city].value = "Berlin"        // only city-readers re-run
- * team[Team::address, Address::city].value = "Berlin"   // the same atom, via a typed path
- * members[0][Member::active].value = false      // element property, still fine-grained
+ * address[Address::city] = "Berlin"        // only city-readers re-run
+ * members[0][Member::active] = false       // element property, still fine-grained
  *
  * // String-based (unchecked casts)
  * val zip: ObservableValue<String> = team.nested<Address>("address").get("zip")
@@ -103,26 +104,29 @@ class ObservableEntity<T : Any>(private val initial: T) : Observable {
     // Shallow access — the property value stays in one container.
 
     /**
-     * Returns the [ObservableValue] for a scalar property.
+     * Reads the current value of a scalar property — `entity[Item::name]` — and
+     * tracks it, so a reaction re-runs when just that property changes.
      *
-     * Kotlin's overload resolution prefers [get(KProperty1<T, List<P>>)] when
-     * the property type is [List], so this overload is never called for lists.
-     * An object-typed property is kept atomic here; use [nested] to decompose it.
+     * An object- or list-typed property is kept atomic here; use [nested] /
+     * [nestedList] to decompose it. Reach for [property] when the container
+     * itself is needed, e.g. to bind it to a UI component.
      */
-    operator fun <P> get(prop: KProperty1<T, P>): ObservableValue<P> =
-        container(prop.name, Access.VALUE) { ObservableValue(prop.get(initial), name = prop.name) }
+    operator fun <P> get(prop: KProperty1<T, P>): P = property(prop).value
+
+    /** Writes a scalar property — `entity[Item::name] = "…"`. */
+    operator fun <P> set(prop: KProperty1<T, P>, value: P) {
+        property(prop).value = value
+    }
 
     /**
-     * Returns the [ObservableList] for a list property, holding the elements as
-     * plain values.
+     * Returns the [ObservableValue] backing a scalar property, created on first
+     * access and cached afterward.
      *
-     * This overload is more specific than [get(KProperty1<T, P>)] and is
-     * selected automatically by the compiler when [prop] is typed as
-     * `KProperty1<T, List<P>>`. Use [nestedList] when the elements are objects
-     * whose properties should be reactive too.
+     * @throws IllegalStateException if the property is already exposed as something
+     *                               else; the message names the accessor to use.
      */
-    operator fun <P> get(prop: KProperty1<T, List<P>>): ObservableList<P> =
-        container(prop.name, Access.LIST) { ObservableList(prop.get(initial)) }
+    fun <P> property(prop: KProperty1<T, P>): ObservableValue<P> =
+        container(prop.name, Access.VALUE) { ObservableValue(prop.get(initial), name = prop.name) }
 
     /**
      * Returns the [ObservableValue] for the scalar property named [name].
@@ -204,36 +208,10 @@ class ObservableEntity<T : Any>(private val initial: T) : Observable {
      */
     fun <P : Any> nestedList(name: String): ObservableEntityList<P> =
         container(name, Access.NESTED_LIST) {
-            val prop = property(name)
+            val prop = memberProperty(name)
             requireObjectElementType(name, prop)
-            ObservableEntityList(requireObjectList<P>(name, prop.getter.call(initial)))
+            ObservableEntityList(requireObjectList(name, prop.getter.call(initial)))
         }
-
-    // Typed paths — sugar for walking two or three levels down in one expression.
-    // Each step is a nested() call, so the containers are the same ones a manual
-    // walk would hand out. Chain nested() directly to go deeper.
-
-    /** The atom at `prop.sub`, e.g. `team[Team::address, Address::city]`. */
-    operator fun <P : Any, R> get(prop: KProperty1<T, P>, sub: KProperty1<P, R>): ObservableValue<R> =
-        nested(prop)[sub]
-
-    /** The shallow list at `prop.sub`, chosen over the scalar overload when `sub` is a [List]. */
-    operator fun <P : Any, R> get(prop: KProperty1<T, P>, sub: KProperty1<P, List<R>>): ObservableList<R> =
-        nested(prop)[sub]
-
-    /** The atom at `first.second.third`. */
-    operator fun <P : Any, Q : Any, R> get(
-        first: KProperty1<T, P>,
-        second: KProperty1<P, Q>,
-        third: KProperty1<Q, R>
-    ): ObservableValue<R> = nested(first).nested(second)[third]
-
-    /** The shallow list at `first.second.third`. */
-    operator fun <P : Any, Q : Any, R> get(
-        first: KProperty1<T, P>,
-        second: KProperty1<P, Q>,
-        third: KProperty1<Q, List<R>>
-    ): ObservableList<R> = nested(first).nested(second)[third]
 
     override fun subscribe(observer: Observer): Disposable {
         subscribers.add(observer)
@@ -295,7 +273,7 @@ class ObservableEntity<T : Any>(private val initial: T) : Observable {
      * The getter is forced accessible so that non-public model types — a private
      * data class inside a store, say — work through the string-based accessors too.
      */
-    private fun property(name: String): KProperty<*> {
+    private fun memberProperty(name: String): KProperty<*> {
         val prop = initial::class.memberProperties.find { it.name == name }
             ?: throw NoSuchElementException("No property '$name' on ${initial::class.simpleName}")
         prop.isAccessible = true
@@ -303,7 +281,7 @@ class ObservableEntity<T : Any>(private val initial: T) : Observable {
     }
 
     /** Reads the property named [name] off [initial] reflectively. */
-    private fun propertyValue(name: String): Any? = property(name).getter.call(initial)
+    private fun propertyValue(name: String): Any? = memberProperty(name).getter.call(initial)
 
     private fun requireList(name: String, value: Any?): List<*> {
         require(value is List<*>) {

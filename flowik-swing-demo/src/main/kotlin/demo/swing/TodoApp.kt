@@ -38,7 +38,7 @@ private fun TodoListPanel(
     jList.autoRun("todoList.rebuild") {
         val visible = visibleItems()
         // track each item's done state so the list repaints on toggle
-        visible.forEach { it[TodoItem::done].value }
+        visible.forEach { it[TodoItem::done] }
 
         val selectedItem = jList.selectedValue
         listModel.clear()
@@ -128,9 +128,9 @@ private class TodoCellRenderer : ListCellRenderer<ObservableEntity<TodoItem>> {
         isSelected: Boolean,
         cellHasFocus: Boolean
     ): Component {
-        val done = value[TodoItem::done].value
+        val done = value[TodoItem::done]
         checkBox.isSelected = done
-        label.text = value[TodoItem::text].value
+        label.text = value[TodoItem::text]
 
         if (done) {
             label.foreground = UIManager.getColor("Label.disabledForeground") ?: Color.GRAY
@@ -166,11 +166,11 @@ fun todoDemo() {
 
             val visibleItems by todos.filter { item: ObservableEntity<TodoItem> ->
                 val filterText = filter.lowercase()
-                (showCompleted || !item[TodoItem::done].value)
-                        && (filterText.isEmpty() || item[TodoItem::text].value.lowercase().contains(filterText))
+                (showCompleted || !item[TodoItem::done])
+                        && (filterText.isEmpty() || item[TodoItem::text].lowercase().contains(filterText))
             }
 
-            private val doneTodos by todos.filter { it[TodoItem::done].value }
+            private val doneTodos by todos.filter { it[TodoItem::done] }
 
             val totalCount by computed { todos.size }
             val doneCount by computed { doneTodos.size }
@@ -183,7 +183,7 @@ fun todoDemo() {
             fun removeItem(item: ObservableEntity<TodoItem>) = action { todos.remove(item) }
 
             fun toggleItem(item: ObservableEntity<TodoItem>) = action {
-                item[TodoItem::done].value = !item[TodoItem::done].value
+                item[TodoItem::done] = !item[TodoItem::done]
             }
 
             fun clearCompleted() = action {

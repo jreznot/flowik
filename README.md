@@ -194,7 +194,7 @@ whenThen(check = { items.size > 10 }, effect = { println("Over the limit!") })
 
 action {                                       // batch — derivations fire once at the end
     name.value = "Carol"
-    person[Person::age].value = 31
+    person[Person::age] = 31
 }
 ```
 
@@ -210,24 +210,25 @@ data class Team(val name: String, val address: Address, val members: List<Member
 
 val team = observable(Team("A-Team", Address("Munich", "80331"), listOf(Member("Alice")), listOf("core")))
 
-team[Team::name]                    // ObservableValue<String>  — scalar atom
-team[Team::address]                 // ObservableValue<Address>  — the whole object in one atom
-team[Team::tags]                    // ObservableList<String>    — reactive list of plain values
+team[Team::name]                    // String   — reads the scalar atom, and tracks it
+team[Team::name] = "B-Team"         // writes it: only name-readers re-run
+team[Team::address]                 // Address  — the whole object, kept in one atom
+team[Team::tags]                    // List<String> — the list as one atomic value
 
+team.property(Team::name)           // ObservableValue<String>      — the atom itself, e.g. to bind to a UI
+team.list<String>("tags")           // ObservableList<String>       — reactive list of plain values
 team.nested(Team::address)          // ObservableEntity<Address>    — city and zip are separate atoms
 team.nestedList(Team::members)      // ObservableEntityList<Member> — each element is an ObservableEntity
 ```
 
-`nested` / `nestedList` compose, so a tree of any depth is reachable, and typed paths keep the common
-cases on one line:
+`nested` / `nestedList` compose, so a tree of any depth is reachable:
 
 ```kotlin
-team.nested(Team::address)[Address::city].value = "Berlin"
-team[Team::address, Address::city].value = "Berlin"       // the same atom, via a typed path
-// paths take up to three steps: company[Company::team, Team::address, Address::city]
+team.nested(Team::address)[Address::city] = "Berlin"
+company.nested(Company::team).nested(Team::address)[Address::city] = "Berlin"
 
 val alice = team.nestedList(Team::members)[0]
-alice[Member::active].value = false                       // fine-grained: only active-readers re-run
+alice[Member::active] = false                             // fine-grained: only active-readers re-run
 ```
 
 Deep access is explicit rather than automatic because a property's type cannot tell the compiler
@@ -250,8 +251,8 @@ a reaction that must re-run on them reads the element property itself:
 
 ```kotlin
 val activeNames = team.nestedList(Team::members)
-    .filter { it[Member::active].value }      // property-reactive, because the predicate reads the atom
-    .map { it[Member::name].value }
+    .filter { it[Member::active] }            // property-reactive, because the predicate reads the atom
+    .map { it[Member::name] }
 ```
 
 Nullable object properties (`Address?`) have nothing to decompose, so they are rejected at compile time
@@ -479,7 +480,7 @@ val root = panel {
 body.bindContent {                    // after the panel is built: `panel` is the top-level
     panel {                           // builder here, so the lambda returns a DialogPanel
         for (item in store.items) {
-            row { label("").bindText(item[Item::title]) }
+            row { label("").bindText(item.property(Item::title)) }
         }
     }
 }

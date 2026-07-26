@@ -13,7 +13,7 @@ package flowik.core
  * todos.add(TodoItem("Buy milk"))          // plain value, auto-wrapped
  *
  * val item: ObservableMap<TodoItem> = todos[0]
- * item[TodoItem::done].value = true        // fine-grained reactive update
+ * item[TodoItem::done] = true              // fine-grained reactive update
  * ```
  *
  * A change *inside* an element reaches this list's [subscribe] listeners, so a
