@@ -233,3 +233,8 @@ fun and(vararg values: ReadableObservable<Boolean>): Computed<Boolean> = compute
 fun MutableObservable<Boolean>.toggle() {
     value = !value
 }
+
+/**
+ * Anonymous Store class marker.
+ */
+interface Store
