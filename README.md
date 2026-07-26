@@ -54,8 +54,9 @@ repositories {
 
 dependencies {
     // pick one of these:
-    implementation("com.github.jreznot.flowik:flowik-swing:v0.1.0")
-    implementation("com.github.jreznot.flowik:flowik-vaadin:v0.1.0")
+    implementation("com.github.jreznot.flowik:flowik-swing:v0.2.0")
+    // OR
+    implementation("com.github.jreznot.flowik:flowik-vaadin:v0.2.0")
 }
 ```
 
@@ -72,7 +73,7 @@ dependencies {
 <dependency>
     <groupId>com.github.jreznot.flowik</groupId>
     <artifactId>flowik-swing</artifactId> <!-- or flowik-vaadin -->
-    <version>v0.1.0</version>
+    <version>v0.2.0</version>
 </dependency>
 ```
 
