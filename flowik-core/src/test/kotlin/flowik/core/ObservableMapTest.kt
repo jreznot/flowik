@@ -1,11 +1,6 @@
 package flowik.core
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertSame
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class ObservableMapTest {
 
@@ -78,7 +73,7 @@ class ObservableMapTest {
         val team = team()
 
         assertSame(team.nested(Team::address), team.nested(Team::address))
-        assertSame(team.nested(Team::address), team.nested<Address>("address"))
+        assertSame(team.nested(Team::address), team.nested("address"))
         assertSame(team.nested(Team::address)[Address::city], team[Team::address, Address::city])
     }
 

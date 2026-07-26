@@ -40,7 +40,7 @@ private class BindableComponentImpl(val component: JComponent) : BindableCompone
     }
 
     override fun autoRun(name: String?, effect: () -> Unit): Disposable {
-        val r = flowik.core.autoRun(name, effect)
+        val r = flowik.core.autoRun(name, effect = effect)
         reactions().add(r)
         return r
     }

@@ -7,10 +7,17 @@ package flowik.core
  * [effect] receives the current value and runs whenever tracked data changes.
  * [effect] is NOT tracked; observables read inside it do not become dependencies.
  * Does NOT fire on creation — only on later dependency changes.
+ *
+ * An exception thrown by either [supply] or [effect] is passed to [onError], or
+ * logged when no handler was given — it is never re-thrown to whoever wrote the
+ * observable. The reaction stays alive either way and re-runs on the next
+ * change; if the creation-time evaluation of [supply] failed, the next
+ * successful one counts as a change and does run [effect].
  */
 class Reaction<T>(
     private val name: String? = null,
     private val supply: () -> T,
+    private val onError: ((Throwable) -> Unit)? = null,
     private val effect: (T) -> Unit
 ) : Tracker, Disposable {
 
@@ -25,19 +32,29 @@ class Reaction<T>(
         dependencies.clear()
 
         Tracking.push(this)
-        val data: T
-        try {
-            data = supply()
+        val supplied = try {
+            runCatching(supply)
         } finally {
             Tracking.pop()
         }
 
-        if (!initialized) {
-            initialized = true
+        val firstRun = !initialized
+        initialized = true
+
+        // Errors are reported outside the tracking context, so reads inside the
+        // error handler do not become dependencies of this reaction.
+        val data = supplied.getOrElse { error ->
+            reportUncaught(this, error, onError)
             return
         }
 
-        effect(data)
+        if (firstRun) return
+
+        try {
+            effect(data)
+        } catch (error: Throwable) {
+            reportUncaught(this, error, onError)
+        }
     }
 
     override fun dispose() {

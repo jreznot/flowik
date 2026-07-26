@@ -300,6 +300,40 @@ re-evaluate when an upstream observable changes, or once at the end of the enclo
 Finally, `untracked { }` reads observables without subscribing to them — useful inside a reaction that
 must consult a value it should not re-run for.
 
+### Errors in reactions
+
+As in MobX, an exception thrown inside a reaction is *logged, but not re-thrown*. Writing an observable
+never fails because some far-away reaction did, and a failing reaction does not stop the others
+scheduled alongside it:
+
+```kotlin
+autoRun { label.text = store.title.value.substring(0, 10) }   // throws for short titles — logged, dropped
+```
+
+Tracking survives the failure, so the reaction runs again on the next change and recovers on its own.
+Pass `onError` to handle the failure yourself instead of logging it — `autoRun`, `reaction` and
+`whenThen` all accept it:
+
+```kotlin
+autoRun(onError = { status.value = it.message }) { render(store.report.value) }
+
+reaction(
+    supply = { store.query.value },
+    onError = { log.warn("search failed", it) },
+    effect = { runSearch(it) },
+)
+
+whenThen(check = { store.ready.value }, onError = { showFatal(it) }) { start() }
+```
+
+The handler sees exceptions from both parts of a reaction — the tracked expression and the effect.
+A `CancellationException` is the one exception that is always re-thrown, so coroutine cancellation is
+never swallowed.
+
+Logging goes through SLF4J, under the `flowik.core` category. `flowik-core` depends on the SLF4J API
+only — the application picks the binding (logback, `slf4j-simple`, …); with no binding on the
+classpath, SLF4J discards the messages.
+
 ## Full examples and source
 
 Real, runnable demos live in the repo:

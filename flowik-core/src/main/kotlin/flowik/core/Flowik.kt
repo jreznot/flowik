@@ -138,13 +138,17 @@ fun <R> untracked(block: () -> R): R = Tracking.untracked(block)
  * [supply] is tracked — observables read inside it become dependencies.
  * [effect] runs (receiving the current data value) whenever the tracked data
  * changes. Does NOT fire on creation.
+ *
+ * [onError] receives any exception thrown by [supply] or [effect]. Without it
+ * such an exception is logged and dropped — see [Reaction].
  */
 fun <T> reaction(
     name: String? = null,
     supply: () -> T,
+    onError: ((Throwable) -> Unit)? = null,
     effect: (T) -> Unit
 ): Disposable {
-    val r = Reaction(name, supply, effect)
+    val r = Reaction(name, supply, onError, effect)
     r.run()
     return r
 }
@@ -152,12 +156,16 @@ fun <T> reaction(
 /**
  * Create and immediately run an [AutoRun] — the core equivalent of MobX's
  * `autorun`. Returns the [Disposable] so it can be disposed later.
+ *
+ * [onError] receives any exception thrown by [effect], including on this first
+ * run. Without it such an exception is logged and dropped — see [AutoRun].
  */
 fun autoRun(
     name: String? = null,
+    onError: ((Throwable) -> Unit)? = null,
     effect: () -> Unit
 ): Disposable {
-    val ar = AutoRun(name, effect)
+    val ar = AutoRun(name, onError, effect)
     ar.run()
     return ar
 }
@@ -172,13 +180,17 @@ fun autoRun(
  *
  * Returns the [When] (a [Disposable]) so callers can cancel the reaction
  * before the predicate ever becomes `true`.
+ *
+ * [onError] receives any exception thrown by [check] or [effect]. Without it
+ * such an exception is logged and dropped — see [When].
  */
 fun whenThen(
     name: String? = null,
     check: () -> Boolean,
+    onError: ((Throwable) -> Unit)? = null,
     effect: () -> Unit
 ): Disposable {
-    val w = When(name, check, effect)
+    val w = When(name, check, onError, effect)
     w.run()
     return w
 }

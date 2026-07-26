@@ -21,10 +21,16 @@ package flowik.core
  * }
  * // w.dispose()  ← cancel early if needed
  * ```
+ *
+ * An exception thrown by either [predicate] or [effect] is passed to [onError],
+ * or logged when no handler was given — it is never re-thrown to whoever wrote
+ * the observable. A failing [predicate] leaves the reaction armed, so it can
+ * still fire once the predicate evaluates cleanly.
  */
 class When(
     private val name: String? = null,
     private val predicate: () -> Boolean,
+    private val onError: ((Throwable) -> Unit)? = null,
     private val effect: () -> Unit
 ) : Tracker, Disposable {
 
@@ -47,17 +53,27 @@ class When(
 
         // Evaluate predicate inside a tracking context
         Tracking.push(this)
-        val result: Boolean
-        try {
-            result = predicate()
+        val evaluated = try {
+            runCatching(predicate)
         } finally {
             Tracking.pop()
+        }
+
+        // Errors are reported outside the tracking context, so reads inside the
+        // error handler do not become dependencies of this reaction.
+        val result = evaluated.getOrElse { error ->
+            reportUncaught(this, error, onError)
+            return
         }
 
         if (result) {
             // Predicate satisfied — fire once, then dispose
             dispose()
-            effect()
+            try {
+                effect()
+            } catch (error: Throwable) {
+                reportUncaught(this, error, onError)
+            }
         }
     }
 
