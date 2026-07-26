@@ -1,17 +1,26 @@
 package flowik.swing
 
 import flowik.core.Disposable
+import org.slf4j.LoggerFactory
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 
 private const val REACTIONS_KEY = "flowik.reactions"
 private const val BINDABLE_KEY = "flowik.bindable"
 
+/**
+ * Logger for the reaction machinery. Everything a reaction fails to handle
+ * itself is reported under the `flowik.core` category, so an application can
+ * route or silence it with one line of logging configuration.
+ */
+private val log = LoggerFactory.getLogger("flowik.swing")
+
 internal fun JComponent.onDetached(action: () -> Unit) {
     var listener: PropertyChangeListener? = null
     listener = PropertyChangeListener { e ->
         if (e.propertyName == "ancestor" && e.newValue == null) {
             removePropertyChangeListener(listener)
+            log.trace("Component {} onDetached", this)
             action()
         }
     }

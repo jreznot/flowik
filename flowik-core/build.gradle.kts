@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 dependencies {
     implementation(kotlin("reflect"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-    // Logging facade only — the application chooses the binding (logback, slf4j-simple, ...).
     implementation("org.slf4j:slf4j-api:2.0.18")
     testImplementation(kotlin("test"))
 }

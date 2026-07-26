@@ -6,7 +6,12 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":flowik-intellij"))
+    implementation(project(":flowik-core")) {
+        isTransitive = false
+    }
+    implementation(project(":flowik-intellij")) {
+        isTransitive = false
+    }
     testImplementation("junit:junit:4.13.2")
 
     intellijPlatform {
