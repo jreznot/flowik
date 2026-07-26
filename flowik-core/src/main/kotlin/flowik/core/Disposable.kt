@@ -20,6 +20,32 @@ class Bindings : Disposable {
         disposables.add(disposable)
     }
 
+    fun autoRun(
+        name: String? = null,
+        onError: ((Throwable) -> Unit)? = null,
+        effect: () -> Unit
+    ) {
+        register(flowik.core.autoRun(name, onError, effect))
+    }
+
+    fun whenThen(
+        name: String? = null,
+        check: () -> Boolean,
+        onError: ((Throwable) -> Unit)? = null,
+        effect: () -> Unit
+    ) {
+        register(flowik.core.whenThen(name, check, onError, effect))
+    }
+
+    fun <T> reaction(
+        name: String? = null,
+        supply: () -> T,
+        onError: ((Throwable) -> Unit)? = null,
+        effect: (T) -> Unit
+    ) {
+        register(flowik.core.reaction(name, supply, onError, effect))
+    }
+
     override fun dispose() {
         disposables.forEach { it.dispose() }
         disposables.clear()

@@ -7,9 +7,11 @@ import com.intellij.openapi.observable.properties.ObservableMutableProperty
 import com.intellij.openapi.observable.properties.ObservableProperty
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
+import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.dsl.builder.*
 import flowik.core.*
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.function.Supplier
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JToggleButton
@@ -74,12 +76,11 @@ private class FlowikProperty<T>(
     private var lastFired: T = untracked { source.value }
 
     init {
-        val subscription = reaction(
-            name = "flowik -> ObservableProperty($source)",
+        bindings.reaction(
+            name = "FlowikProperty($source)",
             supply = { source.value },
             effect = { value -> fireChangeEvent(value) },
         )
-        bindings.register(subscription)
     }
 
     override fun get(): T = untracked { source.value }
@@ -176,6 +177,47 @@ fun Row.enabledIf(condition: () -> Boolean): Row {
     return enabledIf(computedDisposable.asProperty(bindings))
 }
 
+context(bindings: Bindings)
+fun <C : JBLoadingPanel> C.bindLoading(model: ReadableObservable<Boolean>): C = apply {
+    bindings.autoRun("Cell.bindLoading") {
+        if (model.value) {
+            startLoading()
+        } else {
+            stopLoading()
+        }
+    }
+}
+
+context(bindings: Bindings)
+fun <C : JBLoadingPanel> C.bindLoadingText(model: ReadableObservable<String>): C = apply {
+    bindings.autoRun("Cell.bindLoadingText") {
+        setLoadingText(model.value)
+    }
+}
+
+context(bindings: Bindings)
+fun JComponent.bindEnabled(provider: Supplier<Boolean>) {
+    bindings.autoRun("JComponent.isEnabled") {
+        val shouldBeEnabled = provider.get()
+        if (isEnabled != shouldBeEnabled) {
+            isEnabled = shouldBeEnabled
+            repaint()
+        }
+    }
+}
+
+context(bindings: Bindings)
+fun JComponent.bindVisible(provider: Supplier<Boolean>) {
+    bindings.autoRun("JComponent.isVisible") {
+        val shouldBeVisible = provider.get()
+        if (isVisible != shouldBeVisible) {
+            isVisible = shouldBeVisible
+            parent?.revalidate()
+            parent?.repaint()
+        }
+    }
+}
+
 /**
  * Binds any component aspect the UI DSL has no property for — icon,
  * foreground, tooltip, empty text, a whole custom component's state.
@@ -192,12 +234,11 @@ fun Row.enabledIf(condition: () -> Boolean): Row {
 context(bindings: Bindings)
 fun <C : JComponent, V> Cell<C>.bindIn(read: () -> V, update: C.(V) -> Unit): Cell<C> = also {
     component.update(untracked(read))
-    val subscription = reaction(
+    bindings.reaction(
         name = "Cell.bindIn(${component.javaClass.simpleName})",
         supply = read,
         effect = { value -> component.update(value) },
     )
-    bindings.register(subscription)
 }
 
 /**
@@ -215,10 +256,9 @@ fun <C : JComponent, V> Cell<C>.bindIn(read: () -> V, update: C.(V) -> Unit): Ce
  */
 context(bindings: Bindings)
 fun <C : JComponent> Cell<C>.autoRun(name: String? = null, effect: C.() -> Unit): Cell<C> = also {
-    val subscription = flowik.core.autoRun(name ?: "Cell.autoRun(${component.javaClass.simpleName})") {
+    bindings.autoRun(name ?: "Cell.autoRun(${component.javaClass.simpleName})") {
         component.effect()
     }
-    bindings.register(subscription)
 }
 
 /**
@@ -247,10 +287,9 @@ fun <C : JComponent> Cell<C>.autoRun(name: String? = null, effect: C.() -> Unit)
  */
 context(bindings: Bindings)
 fun Placeholder.bindContent(name: String? = null, content: () -> JComponent?): Placeholder = apply {
-    val subscription = autoRun(name ?: "Placeholder.bindContent") {
+    bindings.autoRun(name ?: "Placeholder.bindContent") {
         component = content()
     }
-    bindings.register(subscription)
 }
 
 /**
