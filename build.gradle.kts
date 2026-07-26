@@ -7,7 +7,7 @@ val publishedModules = setOf("flowik-core", "flowik-swing", "flowik-vaadin")
 allprojects {
     group = "com.github.jreznot.flowik"
     version = (findProperty("version") as String?)?.takeUnless { it == "unspecified" }
-        ?: "0.1.0-SNAPSHOT"
+        ?: "0.2.0-SNAPSHOT"
 }
 
 subprojects {
@@ -35,7 +35,7 @@ subprojects {
 
                     pom {
                         name.set(project.name)
-                        description.set("Flowik — reactive UI bindings for Kotlin (${project.name})")
+                        description.set("Flowik — reactive UI bindings for Kotlin (${project.name}) inspired by MobX")
                         url.set("https://github.com/jreznot/flowik")
 
                         licenses {
@@ -47,8 +47,6 @@ subprojects {
 
                         scm {
                             url.set("https://github.com/jreznot/flowik")
-                            connection.set("scm:git:https://github.com/jreznot/flowik.git")
-                            developerConnection.set("scm:git:ssh://git@github.com/jreznot/flowik.git")
                         }
                     }
                 }
