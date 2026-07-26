@@ -9,5 +9,5 @@ dependencies {
 }
 
 application {
-    mainClass.set("demo.TodoAppKt")
+    mainClass.set("demo.swing.TodoAppKt")
 }
