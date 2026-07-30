@@ -331,6 +331,70 @@ re-evaluate when an upstream observable changes, or once at the end of the enclo
 Finally, `untracked { }` reads observables without subscribing to them — useful inside a reaction that
 must consult a value it should not re-run for.
 
+### Editing as a transaction: `createViewModel`
+
+The equivalent of mobx-utils `createViewModel` — a buffered view over a model, so an edit becomes a
+transaction that only reaches the model when it is committed:
+
+```kotlin
+data class FormData(val name: String = "<Unnamed>", val email: String = "")
+
+val model = observable(FormData())          // ObservableEntity<FormData>
+val form = createViewModel(model)
+
+autoRun { println("${form[FormData::name]} / ${model[FormData::name]} / dirty=${form.isDirty}") }
+
+form[FormData::name] = "Pavan"              // Pavan / <Unnamed> / dirty=true
+form.reset()                                // <Unnamed> / <Unnamed> / dirty=false
+form[FormData::name] = "Flowik"
+form.submit()                               // Flowik / Flowik / dirty=false
+```
+
+Until a property is written, the view model reads *through* to the model — a change to the model is
+still visible. The first write buffers the value and marks that property, and the view model, dirty;
+from then on reads return the buffer and the model is left alone. `submit()` flushes every buffered
+edit in one `action`, `reset()` throws them away, and neither has to happen at all — abandoning the
+form restores the previous state for free.
+
+| Member                      | Meaning                                                                  |
+|-----------------------------|--------------------------------------------------------------------------|
+| `form[Prop::name]`          | read / write the buffered value, auto-tracking                           |
+| `form.property(Prop::name)` | the buffered atom itself — a `MutableObservable` to bind a component to  |
+| `form.isDirty`              | any edit buffered? `isPropertyDirty(Prop::name)` asks about one property |
+| `form.changedValues`        | the buffered edits by property name, in the order they were made         |
+| `form.submit()` / `reset()` | commit / discard everything; `resetProperty(Prop::name)` reverts one     |
+| `form.model`                | the model being edited                                                   |
+
+Reads stay as fine-grained as the property, so binding a form field to `form.property(...)` re-renders
+that field alone, and an OK/Cancel dialog is `submit()` on OK and nothing at all on Cancel:
+
+```kotlin
+row("Host:") { 
+    textField().bindText(form.property(Settings::host)) 
+}
+```
+
+The model can be an `ObservableEntity` — the usual way to edit a data class — or a store holding atoms
+of its own, in which case both shapes are found:
+
+```kotlin
+class Settings {
+    var host: String by observable("localhost")   // delegated — the property is the value
+    val port = observable(8080)                   // the property is the atom
+}
+
+val settings = Settings()
+val form = createViewModel(settings)
+
+form[Settings::host] = "example.org"              // typed by the property reference
+form.property(settings.port).value = 9090         // typed by the atom, since `Settings::port` is the atom
+```
+
+A view model buffers values, so it covers the properties that hold one. A `computed` has nothing to
+submit into, and a reactive collection (`ObservableList`, `ObservableSet`) is a container rather than a
+value — a buffer would hand out a live view of the model's own contents. Both are rejected on access
+with a message saying so; edit collections directly.
+
 ### Errors in reactions
 
 As in MobX, an exception thrown inside a reaction is *logged, but not re-thrown*. Writing an observable
