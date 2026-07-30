@@ -349,7 +349,7 @@ class ObservableSetTest {
         val roles = observableSet("a")
         val seen = mutableListOf<Set<String>>()
 
-        autoRun { seen.add(roles.get()) }
+        autoRun { seen.add(roles.get().toSet()) }
 
         roles.add("b")
 

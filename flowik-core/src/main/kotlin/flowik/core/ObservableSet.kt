@@ -187,7 +187,10 @@ class ObservableSet<T>(initial: Collection<T> = emptySet()) :
     }
 
     /** Tracked, so one-way bindings that read this [Supplier] inside a reaction re-run. */
-    override fun get(): MutableSet<T> = delegate
+    override fun get(): MutableSet<T> {
+        version.value
+        return delegate
+    }
 
     /**
      * A [MutableSet] view that delegates mutating operations back to this
