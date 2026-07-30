@@ -213,8 +213,8 @@ sealed class ViewModel<T : Any> : Observable {
 
 /**
  * Wraps [model] in an [EntityViewModel], so a data class can be edited as a
- * transaction: reads fall through to [model] until they are written, [submit]
- * commits, [reset] reverts.
+ * transaction: reads fall through to [model] until they are written, [ViewModel.submit]
+ * commits, [ViewModel.reset] reverts.
  *
  * The properties are exposed as scalar atoms, which is the one access pattern an
  * [flowik.core.ObservableEntity] allows per property — a property already reached through

@@ -187,6 +187,7 @@ val items   = observables<TodoItem>()          // ObservableEntityList<TodoItem>
 val roles   = observableSet("admin")           // ObservableSet<String>
 
 val greeting = computed { "Hello, ${name.value}" }
+val report   = lazyObservable(emptyList<Row>()) { sink -> load { sink(it) } }  // runs on first read
 
 autoRun { println(greeting.value) }            // re-runs whenever greeting changes
 reaction(supply = { name.value }, effect = { newName -> println("name -> $newName") })
@@ -395,6 +396,67 @@ submit into, and a reactive collection (`ObservableList`, `ObservableSet`) is a 
 value — a buffer would hand out a live view of the model's own contents. Both are rejected on access
 with a message saying so; edit collections directly.
 
+### Deferred work: `lazyObservable`
+
+The equivalent of mobx-utils `lazyObservable` — a value that is computed the first time somebody
+reads it, and updated by pushes afterward. It is the one primitive started by a *read*: `computed`
+re-derives from atoms it tracks and cannot fetch, `flowAction` has to be invoked by hand.
+
+```kotlin
+class PlanetStore(scope: CoroutineScope) : Store {
+    val planets = lazyObservableAsync(emptyList<Planet>(), scope) { sink ->
+        val page1 = withContext(Dispatchers.IO) { api.page(1) }
+        sink(page1)                                              // partial result, the UI paints it
+        sink(page1 + withContext(Dispatchers.IO) { api.page(2) })
+    }
+    val summary by computed { "${planets.value.size} planet(s)" }
+}
+```
+
+The computation receives a `sink` and may call it as many times as it likes, so a progressive load is
+the normal case. Because a `LazyObservable` is an ordinary `ReadableObservable`, every one-way binding
+takes it — and displaying it is what triggers the load:
+
+```kotlin
+Label(store.summary)                                    // this read starts the fetch
+Panel(visible = store.planets.pending) { progressBar() }
+Button("Reload") { store.planets.refresh() }
+```
+
+|                       |                                                                               |
+|-----------------------|-------------------------------------------------------------------------------|
+| `current()` / `value` | starts the computation, returns `initial` until the first push, auto-tracks   |
+| `subscribe { }`       | does *not* start it — laziness is read-driven                                 |
+| `pending`             | observable flag: set while a started computation has not pushed yet           |
+| `refresh()`           | re-invokes it, cancelling a run in flight; does nothing before the first read |
+| `reset()`             | back to `initial` and unstarted — the next read recomputes                    |
+| `dispose()`           | cancels, ignores later pushes, freezes the value; registers with `Bindings`   |
+
+`lazyObservableAsync` launches under the scope you give it: only one run exists at a time, `refresh`
+cancels the previous one, and pushes that arrive from it afterwards are dropped. The body starts on
+`context` and each push is applied on `mainContext` as an `action` — the same pair `flowAction` takes,
+defaulting to `Dispatchers.Main` (the EDT under Swing), so no `runInAction` is needed inside. The
+scope is bound at construction rather than at the call site, because a lazy observable has no call
+site: it starts from a read, which may happen inside a binding, a `computed`, or a repaint.
+
+For a callback or listener API, use the plain flavour — its computation returns immediately and pushes
+whenever it has something, from the UI thread:
+
+```kotlin
+val size = lazyObservable(0L) { sink -> watcher.onChange { sink(dir.size()) } }
+```
+
+A `Flow` is one line away, collected on first read and restarted by `refresh`:
+
+```kotlin
+val ticks = clockFlow.toLazyObservable(0, scope)
+```
+
+Observables read inside the computation are *not* dependencies of whoever read the lazy observable —
+the body runs untracked, so a fetch that reads `query.value` re-runs only when you `refresh` it.
+Anything the body throws goes to `onError`, or to the log when no handler was given, exactly as for
+the reactions below.
+
 ### Errors in reactions
 
 As in MobX, an exception thrown inside a reaction is *logged, but not re-thrown*. Writing an observable
@@ -402,7 +464,9 @@ never fails because some far-away reaction did, and a failing reaction does not 
 scheduled alongside it:
 
 ```kotlin
-autoRun { label.text = store.title.value.substring(0, 10) }   // throws for short titles — logged, dropped
+autoRun { 
+    label.text = store.title.value.substring(0, 10) 
+}   // throws for short titles — logged, dropped
 ```
 
 Tracking survives the failure, so the reaction runs again on the next change and recovers on its own.
