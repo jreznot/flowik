@@ -3,7 +3,7 @@ package demo.swing.obsidian
 import flowik.core.MutableObservable
 import flowik.core.ObservableEntity
 import flowik.core.toggle
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import flowik.swing.text
 import flowik.swing.visible
 import org.kordamp.ikonli.coreui.CoreUiFree
@@ -26,6 +26,9 @@ import javax.swing.border.MatteBorder
  * The panel is a shell — the list is a [NoteListView] and the query field a
  * [FilterField], both usable on their own. It is always visible as far as it is
  * concerned; wrap it in a [SlidingPanel] to make it collapsible.
+ *
+ * Both children are `register`ed, so the sidebar's own `dispose()` takes their
+ * bindings with it and the owner above only has to release one thing.
  *
  * @param sectionTitle   header text, shown upper-cased
  * @param notes          the notes to list (already filtered)
@@ -50,9 +53,9 @@ class NotesSidebar(
     onOpenNote: (ObservableEntity<Note>) -> Unit,
     vaultName: String = "Flowik Vault",
     preferredWidth: Int = 250
-) : JPanel(BorderLayout()) {
+) : BindingsPanel(BorderLayout()) {
 
-    val filterField = FilterField(filterText, filterVisible)
+    val filterField = register(FilterField(filterText, filterVisible))
 
     init {
         background = BG_SIDEBAR
@@ -70,7 +73,7 @@ class NotesSidebar(
         onCreateNote: () -> Unit
     ): JPanel {
         val filterButton = IconButton(CoreUiFree.FILTER, "Filter notes by name") { filterVisible.toggle() }
-        filterButton.autoRun("sidebar.filterButton") { filterButton.active = filterVisible.value }
+        autoRun("sidebar.filterButton") { filterButton.active = filterVisible.value }
 
         val actions = row(
             FlowLayout.LEFT, 1, 4,
@@ -112,10 +115,10 @@ class NotesSidebar(
     ): JPanel {
         val cards = JPanel(CardLayout()).apply {
             background = BG_SIDEBAR
-            add(NoteListView(notes, activeNote, onOpen = onOpenNote), CARD_NOTES)
+            add(register(NoteListView(notes, activeNote, onOpen = onOpenNote)), CARD_NOTES)
             add(placeholder(), CARD_OTHER)
         }
-        cards.autoRun("sidebar.section") {
+        autoRun("sidebar.section") {
             (cards.layout as CardLayout).show(cards, if (notesVisible.get()) CARD_NOTES else CARD_OTHER)
         }
         return cards

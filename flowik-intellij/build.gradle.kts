@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     id("org.jetbrains.intellij.platform.base")
 }
@@ -10,9 +8,4 @@ dependencies {
     intellijPlatform {
         intellijIdea("2026.1.3")
     }
-}
-
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.compilerOptions {
-    freeCompilerArgs.set(listOf("-XXLanguage:+ContextParameters"))
 }

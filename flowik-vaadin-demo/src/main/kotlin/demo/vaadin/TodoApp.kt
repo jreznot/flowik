@@ -19,9 +19,53 @@ import flowik.vaadin.*
 
 data class TodoItem(val text: String, val done: Boolean = false)
 
+/**
+ * One row of the list, with a group of its own: the list rebuilds its rows
+ * whenever the filter changes, and `items` disposes the rows it drops — so a row
+ * that is no longer on screen stops following its item.
+ */
+private class TodoRow(
+    item: ObservableEntity<TodoItem>,
+    onRemove: () -> Unit
+) : HorizontalLayout(), Bindings by Bindings() {
+
+    init {
+        setWidthFull()
+        alignItems = FlexComponent.Alignment.CENTER
+        isPadding = false
+        isSpacing = true
+
+        val checkbox = Checkbox().apply {
+            checked(item.property(TodoItem::done))
+        }
+
+        val text = Span().apply {
+            text(item.property(TodoItem::text))
+            element.style.set("flex-grow", "1")
+
+            autoRun("TodoRow.style") {
+                val done = item[TodoItem::done]
+                style.set("text-decoration", if (done) "line-through" else "none")
+                style.set("color", if (done) "var(--lumo-secondary-text-color)" else "")
+            }
+        }
+
+        val remove = Button("✕") { onRemove() }
+        remove.element.setAttribute("theme", "tertiary small")
+
+        add(checkbox, text, remove)
+    }
+}
+
+/**
+ * The view owns the reactions built inside it: it *is* the [Bindings] group, so
+ * every binding below finds it as their context argument, and the group is
+ * released when the routed view is detached — which for a route means the user
+ * navigated away and this instance is gone.
+ */
 @Route("todo")
 @PageTitle("Todo")
-class TodoView : VerticalLayout() {
+class TodoView : VerticalLayout(), Bindings by Bindings() {
     private val store = object : Store {
         private val todos = observables<TodoItem>()
 
@@ -64,6 +108,7 @@ class TodoView : VerticalLayout() {
         style.set("padding-top", "var(--lumo-space-m)")
 
         add(buildMenuBar(), buildPanel())
+        disposeOnDetach()
     }
 
     private fun buildMenuBar(): MenuBar = MenuBar().apply {
@@ -150,36 +195,9 @@ class TodoView : VerticalLayout() {
         isSpacing = false
         setWidthFull()
 
-        items(store::visibleItems) {
-            todoRow(it)
+        items(store::visibleItems) { item ->
+            TodoRow(item) { store.removeItem(item) }
         }
-    }
-
-    private fun todoRow(item: ObservableEntity<TodoItem>): HorizontalLayout = HorizontalLayout().apply {
-        setWidthFull()
-        alignItems = FlexComponent.Alignment.CENTER
-        isPadding = false
-        isSpacing = true
-
-        val checkbox = Checkbox().apply {
-            checked(item.property(TodoItem::done))
-        }
-
-        val text = Span().apply {
-            text(item.property(TodoItem::text))
-            element.style.set("flex-grow", "1")
-
-            autoRun("TodoRow.style") {
-                val done = item[TodoItem::done]
-                style.set("text-decoration", if (done) "line-through" else "none")
-                style.set("color", if (done) "var(--lumo-secondary-text-color)" else "")
-            }
-        }
-
-        val remove = Button("✕") { store.removeItem(item) }
-        remove.element.setAttribute("theme", "tertiary small")
-
-        add(checkbox, text, remove)
     }
 
     private fun buildAddRow(): HorizontalLayout = HorizontalLayout().apply {

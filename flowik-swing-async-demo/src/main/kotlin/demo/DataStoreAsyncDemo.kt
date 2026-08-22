@@ -117,8 +117,11 @@ fun dataStoreAsyncDemo() {
             }
         }
 
+        // One group for the whole window's reactions, released when it closes.
+        val bindings = Bindings()
+
         context(MainScope()) {
-            uiFrame("Planet Explorer — Async Demo", width = 580, height = 500) {
+            uiFrame("Planet Explorer — Async Demo", width = 580, height = 500, bindings = bindings) {
                 north {
                     vbox(gap = 2) {
                         Label("Planet Explorer").apply {
@@ -173,7 +176,7 @@ fun dataStoreAsyncDemo() {
                     Label("Leave blank to load all · \"m\" for rocky planets · \"error\" to simulate failure")
                         .apply { font = Font("SansSerif", Font.ITALIC, 11) }
                 }
-            }
+            }.disposeOnClose(bindings)
         }
     }
 }

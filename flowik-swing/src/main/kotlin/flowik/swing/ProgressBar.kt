@@ -1,13 +1,15 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.unwrapBinding
 import flowik.layout.PanelScope
 import javax.swing.JProgressBar
 import kotlin.reflect.KProperty0
 
+context(bindings: Bindings)
 fun JProgressBar.value(model: MutableObservable<Int>) {
-    autoRun("JProgressBar.sync") {
+    bindings.autoRun("JProgressBar.sync") {
         value = model.value
     }
 }

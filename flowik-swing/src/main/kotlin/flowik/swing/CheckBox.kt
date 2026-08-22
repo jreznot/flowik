@@ -1,5 +1,6 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.core.unwrapBinding
@@ -7,9 +8,10 @@ import flowik.layout.PanelScope
 import javax.swing.JCheckBox
 import kotlin.reflect.KProperty0
 
+context(bindings: Bindings)
 fun JCheckBox.bindChecked(model: MutableObservable<Boolean>) {
     var updating = false
-    autoRun("JCheckBox.sync") {
+    bindings.autoRun("JCheckBox.sync") {
         val current = model.value
         if (isSelected != current) {
             updating = true

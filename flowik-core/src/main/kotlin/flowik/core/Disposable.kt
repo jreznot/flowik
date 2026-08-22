@@ -13,12 +13,30 @@ interface Disposable {
     fun dispose()
 }
 
-class Bindings : Disposable {
-    private val disposables = mutableListOf<Disposable>()
+/**
+ * A group of reactions with one explicit lifetime: create them through the
+ * group, then [dispose] it once — and only when — the thing they drive is gone.
+ *
+ * It is an interface rather than a class so that whatever owns the lifetime can
+ * *be* the group: a UI panel, a view, a session object. That also makes the
+ * group available as a context argument inside every member of that owner, so
+ * bindings need no parameter threaded through them:
+ *
+ * ```kotlin
+ * class Sidebar : JPanel(), Bindings by Bindings() { … }
+ * ```
+ *
+ * Groups nest: a [Bindings] is itself a [Disposable], so [register]ing a child
+ * group makes one `dispose()` at the top release everything below it.
+ */
+interface Bindings : Disposable {
 
-    fun register(disposable: Disposable) {
-        disposables.add(disposable)
-    }
+    /**
+     * Takes over [disposable]'s lifetime — it is disposed with this group — and
+     * returns it, so a child can be registered where it is created:
+     * `add(register(Sidebar(store)))`.
+     */
+    fun <T : Disposable> register(disposable: T): T
 
     fun autoRun(
         name: String? = null,
@@ -45,9 +63,26 @@ class Bindings : Disposable {
     ) {
         register(flowik.core.reaction(name, supply, onError, effect))
     }
+}
+
+/** Creates an empty [Bindings] group — the standalone form. */
+fun Bindings(): Bindings = BindingsGroup()
+
+private class BindingsGroup : Bindings {
+    private val disposables = mutableListOf<Disposable>()
+
+    override fun <T : Disposable> register(disposable: T): T {
+        disposables.add(disposable)
+        return disposable
+    }
 
     override fun dispose() {
-        disposables.forEach { it.dispose() }
+        // Disposing a child group can, in principle, register more — iterate a
+        // copy and clear first so nothing is disposed twice or missed.
+        val pending = disposables.toList()
         disposables.clear()
+        pending.forEach { it.dispose() }
     }
+
+    override fun toString(): String = "Bindings(${disposables.size})"
 }

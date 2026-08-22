@@ -3,6 +3,7 @@ package demo.swing.obsidian
 import com.formdev.flatlaf.util.Animator
 import com.formdev.flatlaf.util.CubicBezierEasing
 import flowik.core.ObservableEntity
+import flowik.swing.BindingsPanel
 import flowik.swing.text
 import org.kordamp.ikonli.coreui.CoreUiFree
 import org.kordamp.ikonli.swing.FontIcon
@@ -26,7 +27,7 @@ class NoteTabHeader(
     note: ObservableEntity<Note>,
     private val duration: Int = TAB_GROW_MS,
     onClose: () -> Unit
-) : JPanel() {
+) : BindingsPanel(null) {
 
     private val content = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
         isOpaque = false
@@ -57,7 +58,6 @@ class NoteTabHeader(
 
     init {
         isOpaque = false
-        layout = null
         add(content)
 
         // A brand-new tab starts narrow and grows into place.

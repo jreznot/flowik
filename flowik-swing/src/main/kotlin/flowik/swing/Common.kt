@@ -1,10 +1,12 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import java.util.function.Supplier
 import javax.swing.JComponent
 
+context(bindings: Bindings)
 fun JComponent.enabled(provider: Supplier<Boolean>) {
-    autoRun("JComponent.isEnabled") {
+    bindings.autoRun("JComponent.isEnabled") {
         val shouldBeEnabled = provider.get()
         if (isEnabled != shouldBeEnabled) {
             isEnabled = shouldBeEnabled
@@ -13,8 +15,9 @@ fun JComponent.enabled(provider: Supplier<Boolean>) {
     }
 }
 
+context(bindings: Bindings)
 fun JComponent.visible(provider: Supplier<Boolean>) {
-    autoRun("JComponent.isVisible") {
+    bindings.autoRun("JComponent.isVisible") {
         val shouldBeVisible = provider.get()
         if (isVisible != shouldBeVisible) {
             isVisible = shouldBeVisible

@@ -1,74 +1,87 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import flowik.core.Disposable
-import org.slf4j.LoggerFactory
-import java.beans.PropertyChangeListener
-import javax.swing.JComponent
-
-private const val REACTIONS_KEY = "flowik.reactions"
-private const val BINDABLE_KEY = "flowik.bindable"
+import java.awt.FlowLayout
+import java.awt.LayoutManager
+import java.awt.Window
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
+import javax.swing.JPanel
 
 /**
- * Logger for the reaction machinery. Everything a reaction fails to handle
- * itself is reported under the `flowik.core` category, so an application can
- * route or silence it with one line of logging configuration.
+ * A panel that *is* the [Bindings] group of the UI built inside it.
+ *
+ * Every binding in `flowik.swing` takes a [Bindings] as a context parameter, and
+ * a context parameter is satisfied by any receiver in scope — so inside the
+ * members of this panel the group needs no argument, no field and no `context`
+ * block:
+ *
+ * ```kotlin
+ * class Header(title: ReadableObservable<String>) : BindingsPanel(BorderLayout()) {
+ *     init {
+ *         add(JLabel().apply { text { title.value } })    // registers here
+ *         autoRun("header.dirty") { … }                   // and so does this
+ *     }
+ * }
+ * ```
+ *
+ * Disposal is explicit: nothing watches the component hierarchy, so a panel
+ * moved between containers, hidden behind a `CardLayout` or re-parented keeps
+ * working. Release it by
+ *
+ *  - [dispose] — when the UI is really gone;
+ *  - [Bindings.register] on the parent panel — a child then goes with its owner;
+ *  - [disposeOnClose] — for the top of the tree, whose lifetime is its window.
+ *
+ * @param layout the layout manager, defaulting to `JPanel`'s own [FlowLayout];
+ *               pass `null` for a panel that lays its children out itself
  */
-private val log = LoggerFactory.getLogger("flowik.swing")
+open class BindingsPanel(
+    layout: LayoutManager? = FlowLayout()
+) : JPanel(layout), Bindings {
 
-internal fun JComponent.onDetached(action: () -> Unit) {
-    var listener: PropertyChangeListener? = null
-    listener = PropertyChangeListener { e ->
-        if (e.propertyName == "ancestor" && e.newValue == null) {
-            removePropertyChangeListener(listener)
-            log.trace("Component {} onDetached", this)
-            action()
-        }
+    private val bindings = Bindings()
+
+    override fun <T : Disposable> register(disposable: T): T = bindings.register(disposable)
+
+    /**
+     * Releases everything created through this panel. Override it — calling
+     * `super.dispose()` — to also release children the panel builds and drops
+     * as it runs, which its group never got to see.
+     */
+    override fun dispose() {
+        bindings.dispose()
     }
-    addPropertyChangeListener(listener)
 }
 
-interface BindableComponent {
-    /** Create an autoRun and register it for automatic disposal. */
-    fun autoRun(name: String? = null, effect: () -> Unit): Disposable
+/**
+ * Disposes [bindings] once this window has been closed.
+ *
+ * The window is the one Swing lifecycle worth hooking: a closed window is never
+ * shown again, whereas a component leaving the hierarchy usually means a card
+ * was switched or a tab reordered.
+ *
+ * Note that `windowClosed` only fires for a window that is actually disposed —
+ * with `JFrame.EXIT_ON_CLOSE` the process goes first, which is fine for an
+ * application frame.
+ */
+fun <W : Window> W.disposeOnClose(bindings: Bindings): W = apply {
+    addWindowListener(object : WindowAdapter() {
+        override fun windowClosed(e: WindowEvent) {
+            bindings.dispose()
+        }
+    })
 }
 
-fun JComponent.asBindableComponent(): BindableComponent = BindableComponentImpl(this)
-
-fun JComponent.autoRun(name: String? = null, effect: () -> Unit): Disposable =
-    asBindableComponent().autoRun(name, effect)
-
-private class BindableComponentImpl(val component: JComponent) : BindableComponent {
-    init {
-        if (component.getClientProperty(BINDABLE_KEY) == null) {
-            component.putClientProperty(BINDABLE_KEY, this)
-            component.onDetached {
-                removeNotify()
-                component.putClientProperty(BINDABLE_KEY, null)
-            }
-        }
-    }
-
-    override fun autoRun(name: String?, effect: () -> Unit): Disposable {
-        val r = flowik.core.autoRun(name, effect = effect)
-        reactions().add(r)
-        return r
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun reactions(): MutableList<Disposable> {
-        return component.getClientProperty(REACTIONS_KEY) as? MutableList<Disposable>
-            ?: mutableListOf<Disposable>().also { component.putClientProperty(REACTIONS_KEY, it) }
-    }
-
-    private fun removeNotify() {
-        val list = reactions()
-        for (it in list) {
-            it.dispose()
-        }
-        list.clear()
-    }
-
-    override fun toString(): String {
-        return "BindableComponent($component)"
-    }
+/**
+ * Disposes [component] if it owns bindings, i.e. if it is a [BindingsPanel] or
+ * any other [Disposable] component.
+ *
+ * Containers that build their own children — `ForEach`, `Switch` — use this
+ * when they drop one: whoever created a component owns it, and a dropped child
+ * that kept its reactions alive would go on writing into a panel nobody can see.
+ */
+internal fun disposeIfOwned(component: Any?) {
+    (component as? Disposable)?.dispose()
 }

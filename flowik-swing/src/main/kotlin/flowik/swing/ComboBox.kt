@@ -1,17 +1,18 @@
 package flowik.swing
 
-import flowik.core.ObservableList
+import flowik.core.Bindings
 import flowik.core.MutableObservable
+import flowik.core.ObservableList
 import flowik.core.action
 import flowik.layout.PanelScope
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JComboBox
 
+context(bindings: Bindings)
 fun <T> JComboBox<Any?>.items(items: ObservableList<T>, selection: MutableObservable<T?>) {
     var updating = false
-    val bindable = asBindableComponent()
 
-    bindable.autoRun("JComboBox.items") {
+    bindings.autoRun("JComboBox.items") {
         updating = true
         val cbModel = DefaultComboBoxModel<Any?>()
         items.items.forEach { cbModel.addElement(it) }
@@ -19,7 +20,7 @@ fun <T> JComboBox<Any?>.items(items: ObservableList<T>, selection: MutableObserv
         selectedItem = selection.value
         updating = false
     }
-    bindable.autoRun("JComboBox.selection") {
+    bindings.autoRun("JComboBox.selection") {
         val current = selection.value
         if (selectedItem != current) {
             updating = true

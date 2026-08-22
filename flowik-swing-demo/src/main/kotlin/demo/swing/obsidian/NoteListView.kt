@@ -1,7 +1,7 @@
 package demo.swing.obsidian
 
 import flowik.core.ObservableEntity
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import org.kordamp.ikonli.coreui.CoreUiFree
 import org.kordamp.ikonli.swing.FontIcon
 import java.awt.BorderLayout
@@ -38,7 +38,7 @@ class NoteListView(
     activeNote: Supplier<ObservableEntity<Note>?>,
     emptyText: String = "No notes found",
     onOpen: (ObservableEntity<Note>) -> Unit
-) : JPanel(CardLayout()) {
+) : BindingsPanel(CardLayout()) {
 
     private val model = DefaultListModel<ObservableEntity<Note>>()
 
@@ -57,7 +57,7 @@ class NoteListView(
 
         // One reaction owns the whole view: contents follow the notes, the
         // highlight follows the active note, and an empty result swaps the card.
-        list.autoRun("noteList.rebuild") {
+        autoRun("noteList.rebuild") {
             val visible = notes.get()
             // Track each name so a rename repaints the row.
             visible.forEach { it[Note::name] }

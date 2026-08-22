@@ -23,7 +23,12 @@ data class TodoItem(val text: String, val done: Boolean = false)
 /**
  * A JList-based to-do list with keyboard navigation.
  * Arrow keys navigate, Space toggles done, Delete/Backspace removes.
+ *
+ * The reaction that fills the list goes into the [Bindings] group of whoever
+ * builds the panel — inside `uiFrame` that is the frame's group, supplied by the
+ * builder scope.
  */
+context(bindings: Bindings)
 private fun TodoListPanel(
     visibleItems: () -> List<ObservableEntity<TodoItem>>,
     toggleItem: (ObservableEntity<TodoItem>) -> Unit,
@@ -35,7 +40,7 @@ private fun TodoListPanel(
         selectionMode = ListSelectionModel.SINGLE_SELECTION
     }
 
-    jList.autoRun("todoList.rebuild") {
+    bindings.autoRun("todoList.rebuild") {
         val visible = visibleItems()
         // track each item's done state so the list repaints on toggle
         visible.forEach { it[TodoItem::done] }
@@ -195,7 +200,11 @@ fun todoDemo() {
         store.addItem("Build Reaktor component library")
         store.addItem("Write unit tests")
 
-        uiFrame("Todo", width = 540, height = 520) {
+        // The UI's reactions live here, and are released when the window is
+        // closed — no component ever disposes anything behind your back.
+        val bindings = Bindings()
+
+        uiFrame("Todo", width = 540, height = 520, bindings = bindings) {
             north {
                 hbox(gap = 0) {
                     Label("Todo").apply {
@@ -258,6 +267,6 @@ fun todoDemo() {
                     Button("Clear completed") { store.clearCompleted() }
                 }
             }
-        }
+        }.disposeOnClose(bindings)
     }
 }

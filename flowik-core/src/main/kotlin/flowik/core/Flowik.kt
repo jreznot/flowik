@@ -226,6 +226,26 @@ fun <T> unwrapBinding(prop: KProperty0<T>): MutableObservable<T> {
         )
 }
 
+/**
+ * The same, for a one-way binding: a derived property — `val items by
+ * results.map { … }` — is delegated to a [Computed], which nothing is going to
+ * write back to, so it is accepted here.
+ *
+ * @throws IllegalArgumentException if [prop] has no delegate, or is delegated to
+ *         something that is not a [ReadableObservable].
+ */
+@Suppress("UNCHECKED_CAST")
+fun <T> unwrapReadable(prop: KProperty0<T>): ReadableObservable<T> {
+    prop.isAccessible = true
+    val delegate = prop.getDelegate()
+        ?: throw IllegalArgumentException("Property '${prop.name}' must have a delegate")
+    return delegate as? ReadableObservable<T>
+        ?: throw IllegalArgumentException(
+            "Property '${prop.name}' is delegated to ${delegate::class.simpleName}, " +
+                    "which is not a ReadableObservable"
+        )
+}
+
 fun not(value: ReadableObservable<Boolean>): Computed<Boolean> = computed { !value.value }
 fun or(vararg values: ReadableObservable<Boolean>): Computed<Boolean> = computed { values.any { it.value } }
 fun and(vararg values: ReadableObservable<Boolean>): Computed<Boolean> = computed { values.all { it.value } }

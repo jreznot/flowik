@@ -1,13 +1,15 @@
 package flowik.vaadin
 
 import com.vaadin.flow.component.checkbox.Checkbox
+import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.core.unwrapBinding
 import kotlin.reflect.KProperty0
 
+context(bindings: Bindings)
 fun Checkbox.checked(model: MutableObservable<Boolean>) {
-    autoRun("Checkbox.value") {
+    bindings.autoRun("Checkbox.value") {
         val current = model.value
         if (value != current) {
             value = current
@@ -20,6 +22,7 @@ fun Checkbox.checked(model: MutableObservable<Boolean>) {
     }
 }
 
+context(bindings: Bindings)
 fun Checkbox.checked(prop: KProperty0<Boolean>) {
     checked(unwrapBinding(prop))
 }

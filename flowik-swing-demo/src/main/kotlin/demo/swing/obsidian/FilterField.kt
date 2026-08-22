@@ -1,14 +1,13 @@
 package demo.swing.obsidian
 
 import flowik.core.MutableObservable
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import flowik.swing.value
 import flowik.swing.visible
 import org.kordamp.ikonli.coreui.CoreUiFree
 import org.kordamp.ikonli.swing.FontIcon
 import java.awt.BorderLayout
 import java.util.function.Supplier
-import javax.swing.JPanel
 import javax.swing.JTextField
 import javax.swing.SwingUtilities
 import javax.swing.border.EmptyBorder
@@ -24,7 +23,7 @@ class FilterField(
     text: MutableObservable<String>,
     fieldVisible: Supplier<Boolean>,
     placeholder: String = "Filter by name…"
-) : JPanel(BorderLayout()) {
+) : BindingsPanel(BorderLayout()) {
 
     private val field = JTextField().apply {
         value(text)

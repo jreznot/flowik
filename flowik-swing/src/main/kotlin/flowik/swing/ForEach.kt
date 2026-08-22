@@ -1,5 +1,6 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import flowik.core.ListChange
 import flowik.core.ObservableList
 import flowik.layout.PanelScope
@@ -9,6 +10,13 @@ import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 
+/**
+ * Keeps this panel's children in step with [list], one component per item.
+ *
+ * A component dropped here is disposed if it owns bindings, so [map] is free to
+ * return a [BindingsPanel].
+ */
+context(bindings: Bindings)
 fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
     val children = mutableListOf<JComponent>()
     for (item in list.items) {
@@ -17,7 +25,7 @@ fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
         add(comp)
     }
 
-    val subscription = list.onChange { change ->
+    bindings.register(list.onChange { change ->
         when (change) {
             is ListChange.Insert -> {
                 val comp = map(change.item)
@@ -29,12 +37,14 @@ fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
             is ListChange.Remove -> {
                 val comp = children.removeAt(change.index)
                 remove(comp)
+                disposeIfOwned(comp)
                 revalidate()
                 repaint()
             }
             is ListChange.Update -> {
                 val old = children[change.index]
                 remove(old)
+                disposeIfOwned(old)
                 val new = map(change.new)
                 children[change.index] = new
                 add(new, change.index)
@@ -42,20 +52,21 @@ fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
                 repaint()
             }
             is ListChange.Clear -> {
+                children.forEach { disposeIfOwned(it) }
                 children.clear()
                 removeAll()
                 revalidate()
                 repaint()
             }
         }
-    }
-
-    onDetached { subscription.dispose() }
+    })
 }
 
+context(bindings: Bindings)
 fun <T> JPanel.items(computedList: Supplier<List<T>>, map: (T) -> JComponent) {
     val children = mutableListOf<JComponent>()
-    autoRun("JForEach.items") {
+    bindings.autoRun("JForEach.items") {
+        children.forEach { disposeIfOwned(it) }
         children.clear()
         removeAll()
         for (item in computedList.get()) {

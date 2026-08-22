@@ -2,14 +2,13 @@ package demo.swing.obsidian
 
 import flowik.core.MutableObservable
 import flowik.core.toggle
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import flowik.swing.text
 import org.kordamp.ikonli.coreui.CoreUiFree
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.util.function.Supplier
-import javax.swing.JPanel
 import javax.swing.SwingConstants
 import javax.swing.border.MatteBorder
 
@@ -30,7 +29,7 @@ class TopBar(
     rightPanelVisible: MutableObservable<Boolean>,
     leftIcons: List<ToolIcon> = emptyList(),
     rightIcons: List<ToolIcon> = emptyList()
-) : JPanel(BorderLayout()) {
+) : BindingsPanel(BorderLayout()) {
 
     init {
         background = BG_SIDEBAR
@@ -38,10 +37,10 @@ class TopBar(
         preferredSize = Dimension(0, 40)
 
         val toggleLeft = IconButton(CoreUiFree.VIEW_COLUMN, "Toggle left sidebar") { leftPanelVisible.toggle() }
-        toggleLeft.autoRun("topBar.toggleLeft") { toggleLeft.active = leftPanelVisible.value }
+        autoRun("topBar.toggleLeft") { toggleLeft.active = leftPanelVisible.value }
 
         val toggleRight = IconButton(CoreUiFree.COLUMNS, "Toggle right sidebar") { rightPanelVisible.toggle() }
-        toggleRight.autoRun("topBar.toggleRight") { toggleRight.active = rightPanelVisible.value }
+        autoRun("topBar.toggleRight") { toggleRight.active = rightPanelVisible.value }
 
         val titleLabel = caption("", size = 12f).apply {
             horizontalAlignment = SwingConstants.CENTER

@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     application
 }
@@ -13,10 +11,4 @@ dependencies {
 
 application {
     mainClass.set("demo.DataStoreAsyncDemoKt")
-}
-
-val compileKotlin: KotlinCompile by tasks
-
-compileKotlin.compilerOptions {
-    freeCompilerArgs.set(listOf("-XXLanguage:+ContextParameters"))
 }

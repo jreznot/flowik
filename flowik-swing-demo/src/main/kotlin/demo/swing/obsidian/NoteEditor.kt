@@ -1,6 +1,7 @@
 package demo.swing.obsidian
 
 import flowik.core.ObservableEntity
+import flowik.swing.BindingsPanel
 import flowik.swing.text
 import flowik.swing.value
 import org.kordamp.ikonli.coreui.CoreUiFree
@@ -22,7 +23,7 @@ import javax.swing.border.EmptyBorder
  * be thrown away and rebuilt — as it is when a tab is closed and reopened —
  * without losing what was typed.
  */
-class NoteEditor(private val note: ObservableEntity<Note>) : JPanel(BorderLayout()) {
+class NoteEditor(private val note: ObservableEntity<Note>) : BindingsPanel(BorderLayout()) {
 
     private val textArea = JTextArea().apply {
         value(note.property(Note::content))

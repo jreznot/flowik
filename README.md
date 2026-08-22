@@ -111,19 +111,59 @@ import flowik.swing.*
 
 fun main() {
     val store = CounterStore()
-    uiFrame("Counter", width = 240, height = 120) {
+    val bindings = Bindings()                 // owns the reactions this window creates
+
+    uiFrame("Counter", width = 240, height = 120, bindings = bindings) {
         center {
             vbox(gap = 4) {
                 Label { "Count: ${store.count.value} (×2 = ${store.doubled.value})" }
                 Button("Increment") { store.inc() }
             }
         }
-    }
+    }.disposeOnClose(bindings)                // and releases them with the window
 }
 ```
 
 The `Label` lambda reads `store.count` and `store.doubled`, so the label re-renders whenever either
-changes. No explicit subscription.
+changes. No explicit subscription — but the reactions behind it do have an owner, which the next
+section is about.
+
+### Lifetimes in Swing: `Bindings` and `BindingsPanel`
+
+Every Swing binding registers with a [`Bindings`](#bindings-where-the-subscriptions-live) group, which
+it takes as a **context parameter**. Nothing watches the component hierarchy: a panel that is hidden
+behind a `CardLayout`, moved between containers or re-parented keeps working, and reactions end only
+where the code says so.
+
+A context parameter is satisfied by any receiver in scope, which is what keeps the group out of the
+way. Two things provide it:
+
+- the builder scope inside `uiFrame { }` — so `Label { }`, `TextField(store::name)` and `visible { }`
+  all find the frame's group with nothing passed around;
+- `BindingsPanel`, a `JPanel` that *is* a group — so a component class binds inside its own members
+  and is disposed as one unit:
+
+```kotlin
+class Sidebar(notes: Computed<List<Note>>, filter: MutableObservable<String>) : BindingsPanel(BorderLayout()) {
+    // register() takes over a child's lifetime and returns it
+    private val field = register(FilterField(filter))
+
+    init {
+        add(field, BorderLayout.NORTH)
+        add(JLabel().apply { text { "${notes.value.size} notes" } }, BorderLayout.SOUTH)
+        autoRun("sidebar.title") { … }
+    }
+}
+```
+
+Disposal is then one call at whichever level owns the lifetime — `panel.dispose()` for a panel the
+code throws away, `disposeOnClose(bindings)` for the top of the tree. A container that builds and
+drops children as it runs (a tabbed area, a `ForEach`, a `Switch`) disposes what it removes, so the
+rule is simply *whoever creates a component owns it*.
+
+Context parameters are a Kotlin 2.2 preview feature, so a module using `flowik-swing` compiles with
+`-XXLanguage:+ContextParameters` — see [`Bindings`: where the subscriptions
+live](#bindings-where-the-subscriptions-live).
 
 ### Using it from Vaadin (`flowik-vaadin`)
 
@@ -135,13 +175,14 @@ import flowik.core.*
 import flowik.vaadin.*
 
 @Route("counter")
-class CounterView : VerticalLayout() {
+class CounterView : VerticalLayout(), Bindings by Bindings() {
     private val store = CounterStore()
 
     init {
         val label = Span()
         label.text { "Count: ${store.count.value} (×2 = ${store.doubled.value})" }
         add(label, Button("Increment") { store.inc() })
+        disposeOnDetach()          // the route is gone -> so are its reactions
     }
 }
 ```
@@ -149,6 +190,20 @@ class CounterView : VerticalLayout() {
 The Vaadin bindings also expose two-way property binding for inputs — for example
 `TextField().apply { value(store::filter) }` keeps a `TextField` in sync with an observable string
 property.
+
+Lifetimes work exactly as in Swing: the bindings take a
+[`Bindings`](#bindings-where-the-subscriptions-live) group as a context parameter, and the view *is*
+the group — `Bindings by Bindings()` is all the Swing module's `BindingsPanel` does, and Vaadin views
+are classes anyway, so there is no base class to extend. Nothing subscribes to detach events behind
+your back:
+
+- `disposeOnDetach()` opts a component in, and is the right hook for a routed view or a dialog you do
+  not reuse. Aim it at the root you know is discarded — Vaadin also detaches a component that is
+  merely *moved* between layouts, and that must not kill a binding;
+- `register(child)` hands a nested component's group to its owner, so one `dispose()` releases the
+  tree;
+- `items { }` disposes the children it drops, so a row that owns bindings stops following its item
+  when it leaves the list.
 
 ### Using it from a plugin (`flowik-intellij`)
 
@@ -509,7 +564,8 @@ rows — keep working unchanged.
 
 A UI DSL panel is built, not held: `panel { }` returns a `DialogPanel` and the builder receivers are
 gone. There is no place to hang the reactions a binding creates, so the bindings take a `Bindings`
-(from `flowik-core`) as a **context parameter** and register into it:
+(from `flowik-core`) as a **context parameter** and register into it. The Swing and Vaadin bindings
+work the same way — this is one mechanism, not a per-toolkit one:
 
 ```kotlin
 class MyToolWindow(parent: Disposable) {
@@ -535,6 +591,12 @@ a closed panel from being kept alive by the store it read.
 For a panel whose lifetime is the whole IDE session, `context(Bindings()) { panel { ... } }` (as in the
 demo) is fine: the throwaway `Bindings` still satisfies the context parameter, it just never gets
 disposed.
+
+`Bindings` is an interface, so the thing that owns the lifetime can *be* the group —
+`class Sidebar : JPanel(), Bindings by Bindings()`, which is all `flowik-swing`'s `BindingsPanel` is,
+and the same line works on a Vaadin view. Being a receiver, it then satisfies the context parameter
+inside every one of its members. Groups also nest: `register(child)` hands a child group over, so one
+`dispose()` at the top releases the tree.
 
 Context parameters are a Kotlin 2.2 preview feature, so both the module and its consumers compile
 with:

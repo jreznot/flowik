@@ -1,18 +1,21 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import flowik.layout.PanelScope
 import java.util.function.Supplier
 import javax.swing.Icon
 import javax.swing.JLabel
 
+context(bindings: Bindings)
 fun JLabel.text(provider: Supplier<String>) {
-    autoRun("JLabel.text") {
+    bindings.autoRun("JLabel.text") {
         text = provider.get()
     }
 }
 
+context(bindings: Bindings)
 fun JLabel.icon(provider: Supplier<Icon?>) {
-    autoRun("JLabel.icon") {
+    bindings.autoRun("JLabel.icon") {
         icon = provider.get()
     }
 }

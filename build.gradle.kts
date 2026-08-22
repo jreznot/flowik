@@ -17,6 +17,14 @@ subprojects {
         jvmToolchain(21)
     }
 
+    // Bindings are passed as context parameters (a Kotlin 2.2 preview feature),
+    // so every module — and every consumer of the libraries — needs this on.
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            freeCompilerArgs.add("-XXLanguage:+ContextParameters")
+        }
+    }
+
     tasks.test {
         useJUnitPlatform()
     }

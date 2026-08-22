@@ -1,11 +1,10 @@
 package demo.swing.obsidian
 
 import flowik.core.MutableObservable
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import java.awt.Component
 import javax.swing.Box
 import javax.swing.BoxLayout
-import javax.swing.JPanel
 import javax.swing.border.CompoundBorder
 import javax.swing.border.EmptyBorder
 import javax.swing.border.MatteBorder
@@ -28,7 +27,7 @@ class IconRail(
     selectedTool: MutableObservable<String>,
     footerTools: List<ToolIcon> = emptyList(),
     onSelect: (ToolIcon) -> Unit = {}
-) : JPanel() {
+) : BindingsPanel() {
 
     init {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -41,7 +40,7 @@ class IconRail(
                 onSelect(tool)
             }
             button.alignmentX = Component.CENTER_ALIGNMENT
-            button.autoRun("rail.${tool.title}") { button.active = selectedTool.value == tool.title }
+            autoRun("rail.${tool.title}") { button.active = selectedTool.value == tool.title }
             add(button)
         }
 

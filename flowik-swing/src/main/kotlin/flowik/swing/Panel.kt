@@ -14,7 +14,7 @@ fun PanelScope.Panel(
     val child = JPanel()
     child.layout = layout ?: BoxLayout(child, BoxLayout.Y_AXIS)
     child.visible(visible)
-    PanelScope(child).init()
+    PanelScope(child, this).init()
     panel.add(child)
     return child
 }

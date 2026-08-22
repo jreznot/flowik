@@ -1,5 +1,6 @@
 package flowik.swing
 
+import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.action
 import flowik.core.unwrapBinding
@@ -17,9 +18,10 @@ class FixedColumnTextField(columns: Int = 20) : JTextField(columns) {
     }
 }
 
+context(bindings: Bindings)
 fun JTextField.value(model: MutableObservable<String>) {
     var updating = false
-    autoRun("JTextField.sync") {
+    bindings.autoRun("JTextField.sync") {
         val current = model.value
         if (text != current) {
             updating = true

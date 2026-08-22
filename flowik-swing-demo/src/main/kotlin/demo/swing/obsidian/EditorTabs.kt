@@ -4,7 +4,7 @@ import flowik.core.MutableObservable
 import flowik.core.ObservableEntity
 import flowik.core.ObservableList
 import flowik.core.action
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import org.kordamp.ikonli.coreui.CoreUiFree
 import java.awt.BorderLayout
 import java.awt.CardLayout
@@ -27,6 +27,10 @@ import javax.swing.SwingUtilities
  * removing a note from [openNotes] directly still works, it just skips the
  * animation.
  *
+ * A tab is built here and dropped here, so this is where its bindings are
+ * released: [dropTab] disposes the editor and the header it removes, and
+ * [dispose] closes whatever is still open.
+ *
  * @param openNotes    the open notes, in tab order — tabs are added, removed and
  *                     reordered to match
  * @param activeNote   two-way: selecting a tab writes it, writing it selects the
@@ -42,7 +46,7 @@ class EditorTabs(
     private val onCreateNote: () -> Unit,
     private val onCloseNote: (ObservableEntity<Note>) -> Unit,
     private val onFindFile: () -> Unit
-) : JPanel(CardLayout()) {
+) : BindingsPanel(CardLayout()) {
 
     private val tabs = JTabbedPane().apply {
         tabLayoutPolicy = JTabbedPane.SCROLL_TAB_LAYOUT
@@ -95,9 +99,6 @@ class EditorTabs(
         add(emptyState(), CARD_EMPTY)
         add(tabs, CARD_TABS)
 
-        // Both reactions sit on this container rather than on the tabbed pane:
-        // a card switch must never take their component out of the hierarchy,
-        // which would dispose them.
         autoRun("editorTabs.sync") { syncTabs() }
         autoRun("editorTabs.card") {
             val card = if (openNotes.size > 0) CARD_TABS else CARD_EMPTY
@@ -126,6 +127,19 @@ class EditorTabs(
         }
     }
 
+    /**
+     * Removes the tab at [index] and disposes what it was made of — the editor
+     * and the tab header both hold reactions on the note they showed.
+     */
+    private fun dropTab(index: Int) {
+        val editor = tabs.getComponentAt(index)
+        val header = tabs.getTabComponentAt(index)
+        tabs.removeTabAt(index)
+        tabNotes.removeAt(index)
+        (editor as? NoteEditor)?.dispose()
+        (header as? NoteTabHeader)?.dispose()
+    }
+
     private fun headerFor(note: ObservableEntity<Note>): NoteTabHeader? {
         val index = tabNotes.indexOfFirst { it === note }
         return if (index >= 0) tabs.getTabComponentAt(index) as? NoteTabHeader else null
@@ -148,8 +162,7 @@ class EditorTabs(
             for (index in tabNotes.indices.reversed()) {
                 if (open.none { it === tabNotes[index] }) {
                     closing.remove(tabNotes[index])
-                    tabs.removeTabAt(index)
-                    tabNotes.removeAt(index)
+                    dropTab(index)
                 }
             }
 
@@ -165,10 +178,7 @@ class EditorTabs(
                 if (index < tabNotes.size && tabNotes[index] === note) return@forEachIndexed
 
                 val existing = tabNotes.indexOfFirst { it === note }
-                if (existing >= 0) {
-                    tabs.removeTabAt(existing)
-                    tabNotes.removeAt(existing)
-                }
+                if (existing >= 0) dropTab(existing)
                 val editor = NoteEditor(note)
                 tabs.insertTab(note[Note::name], null, editor, null, index)
                 tabs.setTabComponentAt(index, NoteTabHeader(note) { closeTab(note) })
@@ -203,6 +213,12 @@ class EditorTabs(
             background = BG_EDITOR
             add(links)
         }
+    }
+
+    /** Closes the tabs that are still open, then releases this panel's own reactions. */
+    override fun dispose() {
+        for (index in tabNotes.indices.reversed()) dropTab(index)
+        super.dispose()
     }
 
     private companion object {

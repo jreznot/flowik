@@ -1,69 +1,76 @@
+/*
+ * Every binding in `flowik.vaadin` registers with a `flowik.core.Bindings`
+ * group, which it takes as a context parameter. Nothing listens for detach
+ * events on your behalf: a component moved between layouts, or a dialog closed
+ * and reopened, keeps its bindings, and they end where the code says so.
+ *
+ * A context parameter is satisfied by any receiver in scope, so the container
+ * that holds the UI can *be* the group. Vaadin views are classes anyway, which
+ * makes the mixin the whole mechanism — there is no framework panel to extend:
+ *
+ *     @Route("todo")
+ *     class TodoView : VerticalLayout(), Bindings by Bindings() {
+ *         init {
+ *             add(Span().apply { text { store.statusText } })  // registers here
+ *             disposeOnDetach()                                // …ends with the view
+ *         }
+ *     }
+ *
+ * Groups nest, so a child registered with `register(child)` is released by its
+ * owner, and a container that builds children as it runs — `items { }` —
+ * disposes the ones it drops.
+ */
+
 package flowik.vaadin
 
 import com.vaadin.flow.component.Component
-import com.vaadin.flow.component.ComponentUtil
 import com.vaadin.flow.component.UI
 import com.vaadin.flow.shared.Registration
+import flowik.core.Bindings
 import flowik.core.Disposable
 import flowik.core.FlowAction
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlin.coroutines.CoroutineContext
 
-private const val REACTIONS_KEY = "flowik.reactions"
-private const val BINDABLE_KEY = "flowik.bindable"
-
-internal fun Component.onDetached(action: () -> Unit) {
+/**
+ * Disposes [bindings] the first time this component is detached, and stops
+ * listening afterwards.
+ *
+ * This is the one lifecycle hook the module offers, and it is opt-in: wire it to
+ * the component you know is discarded — a routed view, a dialog you do not reuse
+ * — rather than to every bound component. Vaadin detaches a component whenever
+ * it is moved between layouts too, which is exactly the kind of event that must
+ * *not* silently kill a binding.
+ */
+fun <C : Component> C.disposeOnDetach(bindings: Bindings): C = apply {
     var registration: Registration? = null
     registration = addDetachListener {
         registration?.remove()
-        action()
+        bindings.dispose()
     }
 }
 
-interface BindableComponent {
-    /** Create an autoRun and register it for automatic disposal. */
-    fun autoRun(name: String? = null, effect: () -> Unit): Disposable
-}
+/**
+ * The same, for a component that is its own group — the usual shape of a view:
+ *
+ * ```kotlin
+ * class TodoView : VerticalLayout(), Bindings by Bindings() {
+ *     init { … ; disposeOnDetach() }
+ * }
+ * ```
+ */
+fun <C> C.disposeOnDetach(): C where C : Component, C : Bindings = disposeOnDetach(this)
 
-fun Component.asBindableComponent(): BindableComponent = BindableComponentImpl(this)
-
-fun Component.autoRun(name: String? = null, effect: () -> Unit): Disposable =
-    asBindableComponent().autoRun(name, effect)
-
-private class BindableComponentImpl(val component: Component) : BindableComponent {
-    init {
-        if (ComponentUtil.getData(component, BINDABLE_KEY) == null) {
-            ComponentUtil.setData(component, BINDABLE_KEY, this)
-            component.onDetached {
-                removeNotify()
-                ComponentUtil.setData(component, BINDABLE_KEY, null)
-            }
-        }
-    }
-
-    override fun autoRun(name: String?, effect: () -> Unit): Disposable {
-        val r = flowik.core.autoRun(name, effect = effect)
-        reactions().add(r)
-        return r
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun reactions(): MutableList<Disposable> {
-        return ComponentUtil.getData(component, REACTIONS_KEY) as? MutableList<Disposable>
-            ?: mutableListOf<Disposable>().also { ComponentUtil.setData(component, REACTIONS_KEY, it) }
-    }
-
-    private fun removeNotify() {
-        val list = reactions()
-        for (it in list) {
-            it.dispose()
-        }
-        list.clear()
-    }
-
-    override fun toString(): String {
-        return "BindableComponent($component)"
-    }
+/**
+ * Disposes [component] if it owns bindings, i.e. if it is a [Disposable] — a
+ * component that mixed in [Bindings].
+ *
+ * Containers that build their own children use this when they drop one: whoever
+ * created a component owns it, and a dropped child that kept its reactions
+ * alive would go on writing into a component nobody can see.
+ */
+internal fun disposeIfOwned(component: Any?) {
+    (component as? Disposable)?.dispose()
 }
 
 /**

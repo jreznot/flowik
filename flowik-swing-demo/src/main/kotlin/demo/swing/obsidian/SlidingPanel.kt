@@ -2,11 +2,10 @@ package demo.swing.obsidian
 
 import com.formdev.flatlaf.util.Animator
 import com.formdev.flatlaf.util.CubicBezierEasing
-import flowik.swing.autoRun
+import flowik.swing.BindingsPanel
 import java.awt.Dimension
 import java.util.function.Supplier
 import javax.swing.JComponent
-import javax.swing.JPanel
 
 /** Which window edge a [SlidingPanel] is docked to, and so which way it leaves. */
 enum class SlideSide { LEFT, RIGHT }
@@ -23,6 +22,9 @@ enum class SlideSide { LEFT, RIGHT }
  * Wrapping rather than animating the panel itself keeps the panels reusable:
  * [NotesSidebar] and [BacklinksPanel] know nothing about being collapsible.
  *
+ * The wrapper owns the slide animation, not [content]: whoever built the panel
+ * being wrapped is still the one who releases it.
+ *
  * ```kotlin
  * SlidingPanel(NotesSidebar(…), SlideSide.LEFT, store::leftVisible)
  * ```
@@ -32,7 +34,7 @@ class SlidingPanel(
     private val side: SlideSide,
     open: Supplier<Boolean>,
     private val duration: Int = PANEL_SLIDE_MS
-) : JPanel() {
+) : BindingsPanel(null) {
 
     /** 0 — fully collapsed, 1 — fully open. */
     private var fraction = 0f
@@ -40,7 +42,6 @@ class SlidingPanel(
 
     init {
         isOpaque = false
-        layout = null
         add(content)
 
         var firstRun = true

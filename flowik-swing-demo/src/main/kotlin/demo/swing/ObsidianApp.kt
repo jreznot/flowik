@@ -13,10 +13,12 @@ import demo.swing.obsidian.ToolIcon
 import demo.swing.obsidian.TopBar
 import demo.swing.obsidian.applyObsidianTheme
 import demo.swing.obsidian.openInBrowser
+import flowik.core.Bindings
 import flowik.core.action
 import flowik.core.toggle
 import flowik.core.unwrapBinding
 import flowik.layout.uiFrame
+import flowik.swing.disposeOnClose
 import org.kordamp.ikonli.coreui.CoreUiFree
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -75,8 +77,12 @@ private val TOP_BAR_RIGHT_ICONS = listOf(
  * This is the only place that knows about [NotesStore]: each component is
  * handed the observables and actions it needs, so nothing below depends on how
  * — or where — the state is kept.
+ *
+ * It is also the root of the UI's lifetime: every panel it builds is
+ * `register`ed here, so disposing the window releases the whole tree — the
+ * panels themselves watch nothing and never dispose behind your back.
  */
-private class ObsidianWindow(private val store: NotesStore) {
+private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindings() {
 
     // The delegated store properties, as the containers behind them, which is
     // what the two-way bindings take.
@@ -127,20 +133,26 @@ private class ObsidianWindow(private val store: NotesStore) {
         rightIcons = TOP_BAR_RIGHT_ICONS
     )
 
+    init {
+        // Every panel with reactions of its own is a BindingsPanel, and so a
+        // Disposable. BacklinksPanel is static, so there is nothing to own.
+        listOf(rail, sidebar, editor, topBar).forEach { register(it) }
+    }
+
     fun show(): JFrame {
         // The rail is a sibling of the sidebar, so collapsing the sidebar
         // leaves the rail in place. Each sidebar slides behind its own edge.
         val leftArea = JPanel(BorderLayout()).apply {
             add(rail, BorderLayout.WEST)
-            add(SlidingPanel(sidebar, SlideSide.LEFT, leftVisible), BorderLayout.CENTER)
+            add(register(SlidingPanel(sidebar, SlideSide.LEFT, leftVisible)), BorderLayout.CENTER)
         }
         val main = JPanel(BorderLayout()).apply {
             add(leftArea, BorderLayout.WEST)
             add(editor, BorderLayout.CENTER)
-            add(SlidingPanel(backlinks, SlideSide.RIGHT, rightVisible), BorderLayout.EAST)
+            add(register(SlidingPanel(backlinks, SlideSide.RIGHT, rightVisible)), BorderLayout.EAST)
         }
 
-        val frame = uiFrame("Flowik Vault — Obsidian", width = 1280, height = 800) {
+        val frame = uiFrame("Flowik Vault — Obsidian", width = 1280, height = 800, bindings = this) {
             north { add(topBar) }
             center { add(main) }
         }
@@ -157,7 +169,10 @@ private class ObsidianWindow(private val store: NotesStore) {
         frame.minimumSize = Dimension(880, 520)
         installShortcuts(frame.rootPane)
         frame.revalidate()
-        return frame
+        // The application frame exits the process on close, so this only really
+        // matters if the window is closed without the app ending — but it is
+        // where the lifetime is decided either way.
+        return frame.disposeOnClose(this)
     }
 
     /** Reveals the filter field and puts the caret in it, even if it was already up. */
