@@ -40,10 +40,10 @@ internal fun animateValue(
     val distance = to - from
     val animator = Animator(
         duration,
-        Animator.TimingTarget { fraction -> onFrame(from + distance * fraction) },
+        { fraction -> onFrame(from + distance * fraction) },
         // Snap to the exact target before handing over: a frame is only ever as
         // precise as the timer that produced it.
-        Runnable {
+        {
             onFrame(to)
             onEnd()
         }

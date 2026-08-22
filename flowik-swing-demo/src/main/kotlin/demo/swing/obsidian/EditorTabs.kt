@@ -6,10 +6,11 @@ import flowik.core.ObservableList
 import flowik.core.action
 import flowik.swing.autoRun
 import org.kordamp.ikonli.coreui.CoreUiFree
+import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Dimension
-import java.awt.FlowLayout
 import java.awt.GridBagLayout
+import java.awt.Insets
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JPanel
@@ -67,9 +68,22 @@ class EditorTabs(
         background = BG_EDITOR
         tabs.putClientProperty(
             "JTabbedPane.trailingComponent",
-            // The trailing area spans the rest of the tab strip, so the button
-            // is pinned to its left edge, right after the last tab.
-            row(FlowLayout.LEFT, 0, 0, IconButton(CoreUiFree.PLUS, "New note", onClick = onCreateNote))
+            // The trailing area spans the rest of the tab strip. BorderLayout
+            // pins the button to its left edge, right after the last tab, and
+            // stretches it over the full strip height — a FlowLayout would leave
+            // it top-aligned at its own smaller height, out of line with the tabs.
+            JPanel(BorderLayout()).apply {
+                isOpaque = false
+                add(
+                    IconButton(
+                        CoreUiFree.PLUS,
+                        "New note",
+                        padding = Insets(6, 10, 6, 10),
+                        onClick = onCreateNote
+                    ),
+                    BorderLayout.WEST
+                )
+            }
         )
 
         tabs.addChangeListener {
