@@ -1,12 +1,10 @@
 package demo.swing.obsidian
 
-import flowik.swing.visible
 import org.kordamp.ikonli.coreui.CoreUiFree
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.GridBagLayout
-import java.util.function.Supplier
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JPanel
@@ -14,16 +12,15 @@ import javax.swing.border.EmptyBorder
 import javax.swing.border.MatteBorder
 
 /**
- * The collapsible right sidebar. Its mentions section is static — this demo has
- * no link graph — and it carries a single live link in the middle.
+ * The right sidebar. Its mentions section is static — this demo has no link
+ * graph — and it carries a single live link in the middle. Wrap it in a
+ * [SlidingPanel] to make it collapsible.
  *
- * @param panelVisible  collapses the panel
  * @param linkText      caption of the centred link
  * @param onLinkClicked what the link does; the panel does not care whether that
  *                      opens a browser
  */
 class BacklinksPanel(
-    panelVisible: Supplier<Boolean>,
     linkText: String,
     onLinkClicked: () -> Unit,
     preferredWidth: Int = 270
@@ -51,8 +48,6 @@ class BacklinksPanel(
             },
             BorderLayout.CENTER
         )
-
-        visible(panelVisible)
     }
 
     private fun header() = toolIconRow(

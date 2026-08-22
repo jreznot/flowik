@@ -14,6 +14,9 @@ import flowik.core.observables
 /** The rail tool whose sidebar section lists the note files. */
 const val FILES_TOOL = "Files"
 
+/** Base name for notes created without asking for one. */
+private const val UNTITLED = "Untitled"
+
 /**
  * Every piece of application state, as observables. The components in this
  * package never see this class: the window hands each of them the individual
@@ -64,19 +67,41 @@ class NotesStore : Store {
     /**
      * Creates a note file and opens it. Returns `null` when the name is empty
      * or already taken, so the caller can report it.
+     *
+     * [content] defaults to a heading made from the file name.
      */
-    fun createNote(rawName: String): ObservableEntity<Note>? = action {
+    fun createNote(rawName: String, content: String? = null): ObservableEntity<Note>? = action {
         val trimmed = rawName.trim()
         if (trimmed.isEmpty()) return@action null
 
         val fileName = if (trimmed.endsWith(".md")) trimmed else "$trimmed.md"
-        if (notes.items.any { it[Note::name].equals(fileName, ignoreCase = true) }) return@action null
+        if (isNameTaken(fileName)) return@action null
 
-        notes.add(Note(fileName, "# ${fileName.removeSuffix(".md")}\n\n"))
+        notes.add(Note(fileName, content ?: "# ${fileName.removeSuffix(".md")}\n\n"))
         val created = notes[notes.size - 1]
         openNote(created)
         created
     }
+
+    /**
+     * Creates and opens an empty `Untitled` note, naming it without asking —
+     * `Untitled`, `Untitled 1`, `Untitled 2`, … — the way Obsidian's new-tab
+     * button does.
+     */
+    fun createUntitledNote(): ObservableEntity<Note>? = createNote(nextUntitledName(), content = "")
+
+    /** The first `Untitled…` name no note is using. */
+    private fun nextUntitledName(): String {
+        var index = 0
+        while (true) {
+            val name = if (index == 0) UNTITLED else "$UNTITLED $index"
+            if (!isNameTaken("$name.md")) return name
+            index++
+        }
+    }
+
+    private fun isNameTaken(fileName: String) =
+        notes.items.any { it[Note::name].equals(fileName, ignoreCase = true) }
 
     fun openNote(note: ObservableEntity<Note>) = action {
         if (openNotes.items.none { it === note }) openNotes.add(note)
@@ -94,8 +119,6 @@ class NotesStore : Store {
             activeNote = remaining.getOrNull(index.coerceAtMost(remaining.size - 1))
         }
     }
-
-    fun closeActiveNote() = activeNote?.let { closeNote(it) }
 
     fun showFilter() = action {
         filterVisible = true

@@ -7,6 +7,8 @@ import demo.swing.obsidian.FILES_TOOL
 import demo.swing.obsidian.IconRail
 import demo.swing.obsidian.NotesSidebar
 import demo.swing.obsidian.NotesStore
+import demo.swing.obsidian.SlideSide
+import demo.swing.obsidian.SlidingPanel
 import demo.swing.obsidian.ToolIcon
 import demo.swing.obsidian.TopBar
 import demo.swing.obsidian.applyObsidianTheme
@@ -86,13 +88,13 @@ private class ObsidianWindow(private val store: NotesStore) {
     private val editor = EditorTabs(
         openNotes = store.openNotes,
         activeNote = activeNote,
-        onCreateNote = ::promptForNewNote,
+        // The `+` button and the empty-state link name the file themselves.
+        onCreateNote = { store.createUntitledNote() },
         onCloseNote = store::closeNote,
         onFindFile = ::goToFile
     )
 
     private val sidebar = NotesSidebar(
-        panelVisible = leftVisible,
         sectionTitle = activeTool,
         notes = store.visibleNotes,
         activeNote = activeNote,
@@ -100,6 +102,7 @@ private class ObsidianWindow(private val store: NotesStore) {
         notesVisible = store::filesToolSelected,
         filterText = unwrapBinding(store::filterText),
         filterVisible = unwrapBinding(store::filterVisible),
+        // The sidebar's own button still asks for a name.
         onCreateNote = ::promptForNewNote,
         onOpenNote = store::openNote
     )
@@ -112,7 +115,6 @@ private class ObsidianWindow(private val store: NotesStore) {
     )
 
     private val backlinks = BacklinksPanel(
-        panelVisible = rightVisible,
         linkText = "Visit Flowik Web Site",
         onLinkClicked = { openInBrowser(FLOWIK_URL) }
     )
@@ -127,15 +129,15 @@ private class ObsidianWindow(private val store: NotesStore) {
 
     fun show(): JFrame {
         // The rail is a sibling of the sidebar, so collapsing the sidebar
-        // leaves the rail in place.
+        // leaves the rail in place. Each sidebar slides behind its own edge.
         val leftArea = JPanel(BorderLayout()).apply {
             add(rail, BorderLayout.WEST)
-            add(sidebar, BorderLayout.CENTER)
+            add(SlidingPanel(sidebar, SlideSide.LEFT, leftVisible), BorderLayout.CENTER)
         }
         val main = JPanel(BorderLayout()).apply {
             add(leftArea, BorderLayout.WEST)
             add(editor, BorderLayout.CENTER)
-            add(backlinks, BorderLayout.EAST)
+            add(SlidingPanel(backlinks, SlideSide.RIGHT, rightVisible), BorderLayout.EAST)
         }
 
         val frame = uiFrame("Flowik Vault — Obsidian", width = 1280, height = 800) {
@@ -189,9 +191,9 @@ private class ObsidianWindow(private val store: NotesStore) {
             })
         }
 
-        bind(KeyEvent.VK_N, menuMask, "newNote", ::promptForNewNote)
+        bind(KeyEvent.VK_N, menuMask, "newNote") { store.createUntitledNote() }
         bind(KeyEvent.VK_O, menuMask, "goToFile", ::goToFile)
-        bind(KeyEvent.VK_W, menuMask, "closeTab") { store.closeActiveNote() }
+        bind(KeyEvent.VK_W, menuMask, "closeTab", editor::closeSelectedTab)
         bind(KeyEvent.VK_BACK_SLASH, menuMask, "toggleLeft") { leftVisible.toggle() }
         bind(KeyEvent.VK_BACK_SLASH, menuMask or KeyEvent.SHIFT_DOWN_MASK, "toggleRight") { rightVisible.toggle() }
     }

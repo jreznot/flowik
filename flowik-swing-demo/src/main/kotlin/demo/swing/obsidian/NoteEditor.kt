@@ -47,6 +47,10 @@ class NoteEditor(private val note: ObservableEntity<Note>) : JPanel(BorderLayout
         )
     }
 
+    fun focusEditor() {
+        textArea.requestFocusInWindow()
+    }
+
     private fun header(): JPanel {
         val inlineTitle = JLabel().apply {
             horizontalAlignment = SwingConstants.CENTER

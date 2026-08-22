@@ -24,9 +24,9 @@ import javax.swing.border.MatteBorder
  * header and the note list, over a vault footer.
  *
  * The panel is a shell — the list is a [NoteListView] and the query field a
- * [FilterField], both usable on their own.
+ * [FilterField], both usable on their own. It is always visible as far as it is
+ * concerned; wrap it in a [SlidingPanel] to make it collapsible.
  *
- * @param panelVisible   collapses the whole panel; the rail beside it stays put
  * @param sectionTitle   header text, shown upper-cased
  * @param notes          the notes to list (already filtered)
  * @param activeNote     drives the list highlight
@@ -39,7 +39,6 @@ import javax.swing.border.MatteBorder
  *                       while the field is showing
  */
 class NotesSidebar(
-    panelVisible: Supplier<Boolean>,
     private val sectionTitle: Supplier<String>,
     notes: Supplier<List<ObservableEntity<Note>>>,
     activeNote: Supplier<ObservableEntity<Note>?>,
@@ -63,8 +62,6 @@ class NotesSidebar(
         add(header(noteCountText, filterVisible, onCreateNote), BorderLayout.NORTH)
         add(content(notes, activeNote, onOpenNote), BorderLayout.CENTER)
         add(footer(vaultName), BorderLayout.SOUTH)
-
-        visible(panelVisible)
     }
 
     private fun header(

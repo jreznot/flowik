@@ -30,7 +30,10 @@ internal val SELECTION_BG = Color(0xE6, 0xE2, 0xF8)
  */
 fun applyObsidianTheme() {
     UIManager.put("TabbedPane.tabHeight", 36)
-    UIManager.put("TabbedPane.tabInsets", Insets(3, 10, 3, 6))
+    // Almost no tab padding of its own: a tab's horizontal padding comes from
+    // NoteTabHeader instead, so a collapsing tab can animate down to nothing.
+    UIManager.put("TabbedPane.tabInsets", Insets(3, 2, 3, 2))
+    UIManager.put("TabbedPane.minimumTabWidth", 0)
     UIManager.put("TabbedPane.background", BG_SIDEBAR)
     UIManager.put("TabbedPane.selectedBackground", BG_EDITOR)
     UIManager.put("TabbedPane.contentAreaColor", BG_EDITOR)
