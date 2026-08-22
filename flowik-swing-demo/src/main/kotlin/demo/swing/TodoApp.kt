@@ -1,6 +1,6 @@
 package demo.swing
 
-import com.formdev.flatlaf.intellijthemes.FlatDarkFlatIJTheme
+import com.formdev.flatlaf.intellijthemes.FlatLightFlatIJTheme
 import flowik.core.*
 import flowik.layout.uiFrame
 import flowik.swing.*
@@ -155,7 +155,7 @@ private class TodoCellRenderer : ListCellRenderer<ObservableEntity<TodoItem>> {
 
 fun todoDemo() {
     SwingUtilities.invokeLater {
-        FlatDarkFlatIJTheme.setup()
+        FlatLightFlatIJTheme.setup()
 
         val store = object : Store {
             val todos = observables<TodoItem>()
