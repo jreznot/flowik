@@ -3,13 +3,11 @@ package flowik.swing
 import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.action
-import flowik.core.unwrapBinding
 import flowik.layout.PanelScope
 import java.awt.Dimension
 import javax.swing.JTextField
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
-import kotlin.reflect.KProperty0
 
 class FixedColumnTextField(columns: Int = 20) : JTextField(columns) {
     override fun getMaximumSize(): Dimension {
@@ -44,8 +42,4 @@ fun PanelScope.TextField(model: MutableObservable<String>, columns: Int = 20): J
         it.value(model)
         panel.add(it)
     }
-}
-
-fun PanelScope.TextField(prop: KProperty0<String>, columns: Int = 20): JTextField {
-    return TextField(unwrapBinding(prop), columns)
 }

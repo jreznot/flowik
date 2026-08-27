@@ -462,7 +462,7 @@ fun todoDemo() {
                         vbox(gap = 4) {
                             Panel(visible = store::showFilter) {
                                 hbox(gap = 6) {
-                                    TextField(store::filter, columns = 18).apply {
+                                    TextField(store::filter.asObservable(), columns = 18).apply {
                                         putClientProperty(
                                             FlatClientProperties.TEXT_FIELD_LEADING_ICON,
                                             coreUi(CoreUiFree.MAGNIFYING_GLASS, 13, MUTED_FG)
@@ -470,7 +470,7 @@ fun todoDemo() {
                                         putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Filter by name")
                                         putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true)
                                     }
-                                    CheckBox(store::showCompleted, "Show completed")
+                                    CheckBox(store::showCompleted.asObservable(), "Show completed")
                                     hglue()
                                 }
                             }

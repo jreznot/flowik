@@ -227,6 +227,17 @@ fun <T> unwrapBinding(prop: KProperty0<T>): MutableObservable<T> {
 }
 
 /**
+ * Returns the reactive container a property is delegated to, so two-way
+ * bindings can be written as `TextField(store::name)`.
+ *
+ * @throws IllegalArgumentException if this has no delegate, or is delegated to
+ *         something that is not a [MutableObservable].
+ */
+fun <T> KProperty0<T>.asObservable(): MutableObservable<T> {
+    return unwrapBinding(this)
+}
+
+/**
  * The same, for a one-way binding: a derived property — `val items by
  * results.map { … }` — is delegated to a [Computed], which nothing is going to
  * write back to, so it is accepted here.

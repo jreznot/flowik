@@ -181,9 +181,9 @@ class TodoView : VerticalLayout(), Bindings by Bindings() {
         isPadding = false
 
         val label = Span("Filter:")
-        val filterField = TextField().apply { value(store::filter) }
+        val filterField = TextField().apply { value(store::filter.asObservable()) }
         val showCompletedCb = Checkbox("Show completed").apply {
-            checked(store::showCompleted)
+            checked(store::showCompleted.asObservable())
         }
 
         add(label, filterField, showCompletedCb)

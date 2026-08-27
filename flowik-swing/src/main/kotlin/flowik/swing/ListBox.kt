@@ -1,15 +1,10 @@
 package flowik.swing
 
-import flowik.core.Bindings
-import flowik.core.ListChange
-import flowik.core.ObservableList
-import flowik.core.ReadableObservable
-import flowik.core.unwrapReadable
+import flowik.core.*
 import flowik.layout.PanelScope
 import javax.swing.AbstractListModel
 import javax.swing.JList
 import javax.swing.JScrollPane
-import kotlin.reflect.KProperty0
 
 private class ReactiveListModel<T>(
     bindings: Bindings,
@@ -88,10 +83,10 @@ fun <T> PanelScope.ListBox(computed: ReadableObservable<List<T>>): ScrollableLis
     }
 }
 
-fun <T> PanelScope.ListBox(computed: KProperty0<List<T>>): ScrollableListBox<T> {
+fun <T> PanelScope.ListBox(computed: MutableObservable<List<T>>): ScrollableListBox<T> {
     return ScrollableListBox<T>().also {
         // Read-only: the property behind a list is usually a Computed.
-        it.jList.items(unwrapReadable(computed))
+        it.jList.items(computed)
         panel.add(it)
     }
 }

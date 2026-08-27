@@ -1,22 +1,10 @@
 package demo.swing
 
 import com.formdev.flatlaf.intellijthemes.FlatLightFlatIJTheme
-import demo.swing.obsidian.BacklinksPanel
-import demo.swing.obsidian.EditorTabs
-import demo.swing.obsidian.FILES_TOOL
-import demo.swing.obsidian.IconRail
-import demo.swing.obsidian.NotesSidebar
-import demo.swing.obsidian.NotesStore
-import demo.swing.obsidian.SlideSide
-import demo.swing.obsidian.SlidingPanel
-import demo.swing.obsidian.ToolIcon
-import demo.swing.obsidian.TopBar
-import demo.swing.obsidian.applyObsidianTheme
-import demo.swing.obsidian.openInBrowser
+import demo.swing.obsidian.*
 import flowik.core.Bindings
 import flowik.core.action
-import flowik.core.toggle
-import flowik.core.unwrapBinding
+import flowik.core.asObservable
 import flowik.layout.uiFrame
 import flowik.swing.disposeOnClose
 import org.kordamp.ikonli.coreui.CoreUiFree
@@ -25,14 +13,7 @@ import java.awt.Dimension
 import java.awt.Toolkit
 import java.awt.event.ActionEvent
 import java.awt.event.KeyEvent
-import javax.swing.AbstractAction
-import javax.swing.JComponent
-import javax.swing.JFrame
-import javax.swing.JOptionPane
-import javax.swing.JPanel
-import javax.swing.JRootPane
-import javax.swing.KeyStroke
-import javax.swing.SwingUtilities
+import javax.swing.*
 
 fun main() {
     obsidianDemo()
@@ -84,16 +65,9 @@ private val TOP_BAR_RIGHT_ICONS = listOf(
  */
 private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindings() {
 
-    // The delegated store properties, as the containers behind them, which is
-    // what the two-way bindings take.
-    private val activeNote = unwrapBinding(store::activeNote)
-    private val activeTool = unwrapBinding(store::activeTool)
-    private val leftVisible = unwrapBinding(store::leftVisible)
-    private val rightVisible = unwrapBinding(store::rightVisible)
-
     private val editor = EditorTabs(
         openNotes = store.openNotes,
-        activeNote = activeNote,
+        activeNote = store::activeNote.asObservable(),
         // The `+` button and the empty-state link name the file themselves.
         onCreateNote = { store.createUntitledNote() },
         onCloseNote = store::closeNote,
@@ -101,13 +75,13 @@ private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindin
     )
 
     private val sidebar = NotesSidebar(
-        sectionTitle = activeTool,
+        sectionTitle = store::activeTool,
         notes = store.visibleNotes,
-        activeNote = activeNote,
+        activeNote = store::activeNote,
         noteCountText = store::countText,
         notesVisible = store::filesToolSelected,
-        filterText = unwrapBinding(store::filterText),
-        filterVisible = unwrapBinding(store::filterVisible),
+        filterText = store::filterText.asObservable(),
+        filterVisible = store::filterVisible.asObservable(),
         // The sidebar's own button still asks for a name.
         onCreateNote = ::promptForNewNote,
         onOpenNote = store::openNote
@@ -115,9 +89,9 @@ private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindin
 
     private val rail = IconRail(
         tools = RAIL_TOOLS,
-        selectedTool = activeTool,
+        selectedTool = store::activeTool.asObservable(),
         footerTools = RAIL_FOOTER_TOOLS,
-        onSelect = { leftVisible.value = true }
+        onSelect = { store.leftVisible = true }
     )
 
     private val backlinks = BacklinksPanel(
@@ -127,8 +101,8 @@ private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindin
 
     private val topBar = TopBar(
         title = store::activeNoteName,
-        leftPanelVisible = leftVisible,
-        rightPanelVisible = rightVisible,
+        leftPanelVisible = store::leftVisible.asObservable(),
+        rightPanelVisible = store::rightVisible.asObservable(),
         leftIcons = TOP_BAR_LEFT_ICONS,
         rightIcons = TOP_BAR_RIGHT_ICONS
     )
@@ -144,12 +118,12 @@ private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindin
         // leaves the rail in place. Each sidebar slides behind its own edge.
         val leftArea = JPanel(BorderLayout()).apply {
             add(rail, BorderLayout.WEST)
-            add(register(SlidingPanel(sidebar, SlideSide.LEFT, leftVisible)), BorderLayout.CENTER)
+            add(register(SlidingPanel(sidebar, SlideSide.LEFT, store::leftVisible)), BorderLayout.CENTER)
         }
         val main = JPanel(BorderLayout()).apply {
             add(leftArea, BorderLayout.WEST)
             add(editor, BorderLayout.CENTER)
-            add(register(SlidingPanel(backlinks, SlideSide.RIGHT, rightVisible)), BorderLayout.EAST)
+            add(register(SlidingPanel(backlinks, SlideSide.RIGHT, store::rightVisible)), BorderLayout.EAST)
         }
 
         val frame = uiFrame("Flowik Vault — Obsidian", width = 1280, height = 800, bindings = this) {
@@ -209,8 +183,12 @@ private class ObsidianWindow(private val store: NotesStore) : Bindings by Bindin
         bind(KeyEvent.VK_N, menuMask, "newNote") { store.createUntitledNote() }
         bind(KeyEvent.VK_O, menuMask, "goToFile", ::goToFile)
         bind(KeyEvent.VK_W, menuMask, "closeTab", editor::closeSelectedTab)
-        bind(KeyEvent.VK_BACK_SLASH, menuMask, "toggleLeft") { leftVisible.toggle() }
-        bind(KeyEvent.VK_BACK_SLASH, menuMask or KeyEvent.SHIFT_DOWN_MASK, "toggleRight") { rightVisible.toggle() }
+        bind(KeyEvent.VK_BACK_SLASH, menuMask, "toggleLeft") {
+            store.leftVisible = !store.leftVisible
+        }
+        bind(KeyEvent.VK_BACK_SLASH, menuMask or KeyEvent.SHIFT_DOWN_MASK, "toggleRight") {
+            store.rightVisible = !store.rightVisible
+        }
     }
 }
 

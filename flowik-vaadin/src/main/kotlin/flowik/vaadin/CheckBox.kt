@@ -21,8 +21,3 @@ fun Checkbox.checked(model: MutableObservable<Boolean>) {
         }
     }
 }
-
-context(bindings: Bindings)
-fun Checkbox.checked(prop: KProperty0<Boolean>) {
-    checked(unwrapBinding(prop))
-}

@@ -5,8 +5,6 @@ import com.vaadin.flow.data.value.ValueChangeMode
 import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.action
-import flowik.core.unwrapBinding
-import kotlin.reflect.KProperty0
 
 context(bindings: Bindings)
 fun TextField.value(model: MutableObservable<String>) {
@@ -24,9 +22,4 @@ fun TextField.value(model: MutableObservable<String>) {
             action { model.value = event.value ?: "" }
         }
     }
-}
-
-context(bindings: Bindings)
-fun TextField.value(prop: KProperty0<String>) {
-    value(unwrapBinding(prop))
 }

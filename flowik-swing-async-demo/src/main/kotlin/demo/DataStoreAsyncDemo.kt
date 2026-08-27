@@ -139,7 +139,7 @@ fun dataStoreAsyncDemo() {
                             vbox(gap = 4) {
                                 hbox(gap = 6) {
                                     Label("Query:")
-                                    TextField(store::query, columns = 18)
+                                    TextField(store::query.asObservable(), columns = 18)
                                     spacer(width = 4)
 
                                     // Re-invoking while running cancels the previous fetch automatically.
@@ -157,7 +157,7 @@ fun dataStoreAsyncDemo() {
                                 }
 
                                 Panel(visible = store.fetch.isRunning) {
-                                    progressBar(store::progress)
+                                    progressBar(store::progress.asObservable())
                                 }
 
                                 Label(store.statusText)
@@ -167,7 +167,7 @@ fun dataStoreAsyncDemo() {
                         }
 
                         center {
-                            ListBox(store::displayItems)
+                            ListBox(store::displayItems.asObservable())
                         }
                     }
                 }
