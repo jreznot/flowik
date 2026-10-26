@@ -2,7 +2,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-extra["vaadinVersion"] = "25.1.4"
+extra["vaadinVersion"] = "25.3.3"
 
 dependencies {
     api(project(":flowik-core"))

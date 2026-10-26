@@ -2,10 +2,10 @@ plugins {
     kotlin("plugin.spring") version "2.3.21"
     id("org.springframework.boot") version "4.0.6"
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.vaadin") version "25.1.4"
+    id("com.vaadin") version "25.3.3"
 }
 
-extra["vaadinVersion"] = "25.1.4"
+extra["vaadinVersion"] = "25.3.3"
 
 dependencies {
     implementation(project(":flowik-vaadin"))
