@@ -10,3 +10,5 @@ src/main/frontend/pnpmfile.js
 src/main/frontend/.npmrc
 src/main/frontend/webpack.generated.js
 src/main/frontend/vite.generated.ts
+src/main/bundles
+target/

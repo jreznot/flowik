@@ -2,3 +2,5 @@
 /.kotlin/
 /.gradle/
 /build/
+/flowik-vaadin-demo/src/main/bundles/
+/flowik-vaadin-demo/target/

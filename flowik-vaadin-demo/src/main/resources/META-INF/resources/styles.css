@@ -1,0 +1,340 @@
+/* Employees demo (demo.vaadin.employees). Colours come from the Aura theme. */
+
+.app-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Navigation bar */
+
+.app-bar {
+    display: flex;
+    align-items: center;
+    flex: none;
+    height: 56px;
+    padding-inline-end: 20px;
+    background: #1e2633;
+    color: #fff;
+}
+
+.app-logo {
+    width: 150px;
+    padding-inline: 20px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    box-sizing: border-box;
+}
+
+.app-logo-mark {
+    color: #4b9bff;
+}
+
+.app-nav {
+    display: flex;
+    align-self: stretch;
+}
+
+.app-nav a {
+    display: flex;
+    align-items: center;
+    padding-inline: 20px;
+    color: rgb(255 255 255 / 0.85);
+    text-decoration: none;
+}
+
+.app-nav a:hover {
+    color: #fff;
+}
+
+.app-nav a[highlight] {
+    background: #121821;
+    color: #fff;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.app-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Master / detail */
+
+.employees-view {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    height: 100%;
+}
+
+.employee-master {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-inline-end: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.master-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 10px;
+}
+
+.master-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.master-search {
+    padding: 0 20px 16px;
+}
+
+.master-search vaadin-text-field {
+    width: 100%;
+}
+
+.employee-list {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    border-top: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.employee-row {
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--vaadin-border-color-secondary);
+    cursor: pointer;
+}
+
+.employee-row:hover {
+    background: color-mix(in srgb, var(--vaadin-text-color) 5%, transparent);
+}
+
+.employee-row.selected {
+    background: color-mix(in srgb, var(--aura-accent-color) 16%, transparent);
+}
+
+.list-empty {
+    padding: 0 20px;
+    color: var(--vaadin-text-color-secondary);
+}
+
+.person-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.person-card > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.person-name,
+.person-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.person-title,
+.detail-title,
+.muted {
+    color: var(--vaadin-text-color-secondary);
+}
+
+.person-title {
+    font-size: var(--aura-font-size-s);
+}
+
+.clickable {
+    margin-inline: -6px;
+    padding: 6px;
+    border-radius: var(--vaadin-radius-m);
+    cursor: pointer;
+}
+
+.clickable:hover {
+    background: color-mix(in srgb, var(--vaadin-text-color) 6%, transparent);
+}
+
+.detail-pane {
+    min-width: 0;
+    min-height: 0;
+    background: var(--vaadin-background-color);
+}
+
+.no-selection {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--vaadin-text-color-secondary);
+}
+
+.employee-detail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.detail-header {
+    flex: none;
+    padding: 20px 20px 0;
+    border-bottom: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.detail-person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.detail-person h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.detail-content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.detail-footer {
+    display: flex;
+    flex: none;
+    gap: 10px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--vaadin-border-color-secondary);
+}
+
+/* Personal tab */
+
+.personal-tab {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 100%;
+}
+
+.summary {
+    padding: 20px;
+    border-inline-end: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.summary hr {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.summary h3,
+.detail-section h3 {
+    margin: 0 0 16px;
+    font-size: 1.125rem;
+}
+
+.icon-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0;
+    color: var(--vaadin-text-color-secondary);
+    font-size: var(--aura-font-size-s);
+}
+
+.icon-item vaadin-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+}
+
+.sections,
+.single-column-tab {
+    padding: 0 20px;
+}
+
+.detail-section {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--vaadin-border-color-secondary);
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px 16px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field.wide {
+    grid-column: 1 / -1;
+}
+
+.field-caption {
+    color: var(--vaadin-text-color-secondary);
+    font-size: var(--aura-font-size-s);
+}
+
+/* Teams and Locations */
+
+.groups-view {
+    height: 100%;
+    padding: 20px;
+    overflow: auto;
+    box-sizing: border-box;
+}
+
+.groups-view h2 {
+    margin: 0 0 20px;
+}
+
+.group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.group-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--vaadin-border-color-secondary);
+    border-radius: var(--vaadin-radius-l);
+    background: var(--vaadin-background-color);
+}
+
+.group-card h3 {
+    margin: 0;
+}
+
+@media (max-width: 1000px) {
+    .personal-tab {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .summary {
+        border-inline-end: none;
+        border-bottom: 1px solid var(--vaadin-border-color-secondary);
+    }
+
+    .field-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

@@ -5,6 +5,7 @@ import com.vaadin.flow.component.HasComponents
 import flowik.core.Bindings
 import flowik.core.ListChange
 import flowik.core.ObservableList
+import flowik.core.untracked
 import java.util.function.Supplier
 
 /**
@@ -54,18 +55,28 @@ fun <T, L> L.items(list: ObservableList<T>, map: (T) -> Component)
     })
 }
 
+/**
+ * Rebuilds this container's children whenever [computedList] changes.
+ *
+ * [map] runs untracked, so a row that reads an item's properties while it is
+ * built — `Span(item[Person::name])` — does not make the whole list rebuild when
+ * that property changes; a row that should follow it binds it itself.
+ */
 context(bindings: Bindings)
 fun <T, L> L.items(computedList: Supplier<List<T>>, map: (T) -> Component)
         where L : Component, L : HasComponents {
     val children = mutableListOf<Component>()
     bindings.autoRun("VForEach.items") {
-        children.forEach { disposeIfOwned(it) }
-        children.clear()
-        removeAll()
-        for (item in computedList.get()) {
-            val comp = map(item)
-            children.add(comp)
-            add(comp)
+        val items = computedList.get()
+        untracked {
+            children.forEach { disposeIfOwned(it) }
+            children.clear()
+            removeAll()
+            for (item in items) {
+                val comp = map(item)
+                children.add(comp)
+                add(comp)
+            }
         }
     }
 }

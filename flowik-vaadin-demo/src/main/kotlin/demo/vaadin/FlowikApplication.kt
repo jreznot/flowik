@@ -13,5 +13,7 @@ fun main(args: Array<String>) {
     runApplication<FlowikVaadinApplication>(*args)
 }
 
+@Suppress("unused")
 @StyleSheet(Aura.STYLESHEET)
+@StyleSheet("styles.css")
 class Application : AppShellConfigurator

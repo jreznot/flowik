@@ -3,21 +3,13 @@ package flowik.vaadin
 import com.vaadin.flow.component.checkbox.Checkbox
 import flowik.core.Bindings
 import flowik.core.MutableObservable
-import flowik.core.action
-import flowik.core.unwrapBinding
-import kotlin.reflect.KProperty0
+import java.util.function.Supplier
 
 context(bindings: Bindings)
-fun Checkbox.checked(model: MutableObservable<Boolean>) {
-    bindings.autoRun("Checkbox.value") {
-        val current = model.value
-        if (value != current) {
-            value = current
-        }
-    }
-    addValueChangeListener { event ->
-        if (event.isFromClient) {
-            action { model.value = event.value }
-        }
-    }
-}
+fun Checkbox.checked(model: MutableObservable<Boolean>) =
+    checked(model) { model.value = it }
+
+/** The controlled form — see `HasValue.value(value, onValueChange)`. */
+context(bindings: Bindings)
+fun Checkbox.checked(checked: Supplier<Boolean>, onCheckedChange: (Boolean) -> Unit) =
+    bindValue("Checkbox.value", checked, onCheckedChange)
