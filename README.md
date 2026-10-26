@@ -732,6 +732,122 @@ several bindings.
 | Edit buffering             | `createViewModel(model)` — buffered edits with `isDirty`, `submit()`, `reset()`                         | Binder integration                                                                                                            |
 | Change detection           | `equals` by default; identity (`observableRef`), deep structural (`observableStruct`) or a custom policy | `Objects.equals` by default; custom equality checker in the constructor                                                       |
 | Error handling             | Reaction errors are logged and not re-thrown; `onError` per reaction                                    | `MissingSignalUsageException` when an effect reads no signal                                                                  |
+| Reusable component inputs  | `Supplier<T>` plus callbacks; any tracked expression works, and `get()` is valid anywhere               | `Signal<T>` plus callbacks; the component must choose `get()` or `peek()` depending on where it reads                          |
+| Testing a component        | Construct it and assert, in plain JUnit; bindings run without a `UI` or attaching                       | Bindings are active only while attached, so the component has to be put into a `UI` first                                    |
+
+### Why the Flowik approach scales to larger UIs
+
+Signals answer *how does a component follow a value*. Large UIs are mostly about a different
+question: *how do you split a screen into small parts that know nothing about each other, and reuse
+them*. The master/detail page in [`flowik-vaadin-demo`](flowik-vaadin-demo/src/main/kotlin/demo/vaadin/employees),
+a port of the Vaadin docs' "Compose with Components" example, shows the Flowik answer.
+
+**One store, stateless parts.** `EmployeeStore` is the only place state changes. Its setters are
+private, and only the route view sees it. The view hands each child the slices it shows and a callback
+for each event it raises — state goes down, events come up:
+
+```kotlin
+class EmployeesView(private val store: EmployeeStore) : Div(), Bindings by Bindings() {
+    init {
+        add(
+            register(EmployeeMaster(
+                employees = store::visibleEmployees,          // a computed slice
+                query = store::search,
+                onQueryChange = store::updateSearch,
+                selected = store::selected,
+                onSelect = store::select,
+                onAddNew = ::addNew,
+            )),
+            Div().apply {
+                childSwitch(store::selected) { employee ->
+                    if (employee == null) NoSelection() else detail(employee)
+                }
+            },
+        )
+        disposeOnDetach()
+    }
+}
+```
+
+`EmployeeMaster` and `EmployeeDetail` never reference the store or each other. Both follow
+`store.selected`, so clicking a row, adding someone and deleting someone all move the detail pane the
+same way, and there is no code that keeps the two panes in sync.
+
+This works because of what a component receives:
+
+- **A `Supplier<T>`, not a framework type.** `EmployeeMaster` takes
+  `Supplier<List<ObservableEntity<Employee>>>`. Every observable and `computed` is a `Supplier`, and so
+  is any lambda that reads them. A caller can pass a store property (`store::visibleEmployees`), derive
+  a value inline (`isSelected = { selected.get() === employee }`, `manager = { store.managerOf(employee) }`)
+  or pass a constant (`tab = { DetailTab.PERSONAL }`), and the child cannot tell which. Tracking goes
+  straight through the lambda, so derived inputs need no wrapper type and nothing to dispose. `get()`
+  also works anywhere, so a component reads its inputs the same way in a binding and in a click
+  handler. In Signals, `get()` throws outside a reactive context, so every reusable component has to
+  know where each read happens and choose `peek()` there.
+
+- **A live view of an entity, not a snapshot.** A row, a `PersonCard`, the detail tabs and the
+  manager card all receive the same `ObservableEntity<Employee>`. Each `Field` reads only the property
+  it shows (`employee[Employee::workPhone]`), so an edit to one property re-renders only the places
+  that show it, on every page that shows it. Derived helpers are written once, as extensions on the
+  entity (`val ObservableEntity<Employee>.fullName`), and every component that calls them is subscribed
+  to exactly `firstName` and `lastName`. In Signals, a person in a `ListSignal` is one `ValueSignal`
+  holding an immutable record, and any change replaces the whole record:
+
+  ```java
+  ValueSignal<Employee> cody = employees.insertLast(codyRecord);
+  name.bindText(() -> cody.get().firstName() + " " + cody.get().lastName());
+  phone.bindText(() -> cody.get().workPhone());
+  cody.update(e -> e.withTitle("Lead"));   // both bindings re-run: they read the same signal
+  ```
+
+  You can narrow this back down with one `Signal.cached(...)` per field. In practice that means
+  modelling the record field by field, by hand, in every component that needs it, which is what
+  `observable(obj)` already does.
+
+- **An edit buffer it does not own.** `EmployeeEditor` takes a `ViewModel<Employee>` and an `onSave`.
+  The caller decides what Save means, so the same dialog edits an existing person
+  (`createViewModel(employee)`, `onSave = form::submit`) and creates a new one: a draft that joins the
+  list only on Save. The Save button is `enabled { form.isDirty }`. Cancel needs no callback, because
+  nothing reaches the model until `submit()`.
+
+- **Its own lifetime.** Every part is `Bindings by Bindings()`. `register(child)`, `items { }` and
+  `childSwitch { }` dispose the children they drop, so lifetimes follow the composition tree: whoever
+  creates a component owns it. Moving a component to another layout does not change its bindings.
+
+Derived state is shared in the same way. The Teams and Locations pages are one `GroupsView` that takes
+a `Supplier<List<Group>>` and an `onOpen`. Each route only chooses the grouping
+(`store.groupedBy { it[Employee::title] }`). Rename someone's title on the Employees page and the
+Teams page regroups, with no code that connects the two pages.
+
+**Each part can be tested on its own.** Because the parts depend only on suppliers and callbacks, and
+their bindings run without a `UI`, `EmployeesViewTest` tests them in plain JUnit, with no store and no
+browser harness:
+
+```kotlin
+val people = observables(*sampleEmployees().take(3).toTypedArray())
+val query = observable("")
+val selected = observableRef<ObservableEntity<Employee>?>(null)
+
+val master = EmployeeMaster(
+    employees = { people.items.filter { it.fullName.contains(query.value) } },
+    query = query,
+    onQueryChange = { events += "query $it" },
+    selected = selected,
+    onSelect = { events += "select ${it.fullName}" },
+    onAddNew = { events += "add" },
+)
+
+master.rows()[1].click()                        // only reported: the master does not select by itself
+action { selected.value = people.items[1] }     // its owner does, and the row follows
+assertTrue(master.rows()[1].hasClass("selected"))
+```
+
+A Signals component tested the same way stays inert, because its effects run only while it is
+attached.
+
+Signals let a component *follow* state. Flowik lets you *design* the state — fine-grained entities,
+derived slices, edit buffers — so it can be handed to components that do not know where it comes from.
+The more components a screen has, the more that matters.
 
 [vaadin:signals]: https://vaadin.com/docs/latest/flow/ui-state/building-ui#signal-basics
 
