@@ -1,6 +1,6 @@
 # Flowik
 
-[![status: experimental](https://github.com/GIScience/badges/raw/master/status/experimental.svg)](https://github.com/GIScience/badges#experimental)
+[![Substack](https://img.shields.io/badge/Substack-@yuriyonweb-FF6719?logo=substack&logoColor=white)](https://substack.com/@yuriyonweb/posts)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![team JetBrains project](https://jb.gg/badges/team.svg)](https://github.com/JetBrains#jetbrains-on-github)
 
