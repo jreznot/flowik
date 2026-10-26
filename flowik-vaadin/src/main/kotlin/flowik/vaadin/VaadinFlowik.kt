@@ -8,7 +8,7 @@
  * that holds the UI can *be* the group. Vaadin views are classes anyway, which
  * makes the mixin the whole mechanism — there is no framework panel to extend:
  *
- *     @Route("todo")
+ *     @Route("t0d0")
  *     class TodoView : VerticalLayout(), Bindings by Bindings() {
  *         init {
  *             add(Span().apply { text { store.statusText } })  // registers here
@@ -34,7 +34,7 @@ import kotlin.coroutines.CoroutineContext
 
 /**
  * Disposes [bindings] the first time this component is detached, and stops
- * listening afterwards.
+ * listening afterward.
  *
  * This is the one lifecycle hook the module offers, and it is opt-in: wire it to
  * the component you know is discarded — a routed view, a dialog you do not reuse

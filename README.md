@@ -703,6 +703,38 @@ Writes through either wrapper are wrapped in `action`, so one UI event produces 
 through `untracked`: the platform reads properties from arbitrary places, including from inside a
 derivation that is rebuilding a panel, and those reads must not silently become dependencies of it.
 
+## Flowik vs. Vaadin Signals
+
+Vaadin Flow now ships its own reactive state, [Signals][vaadin:signals]. The two share the core idea —
+reads inside a reactive block are tracked automatically, writes re-run whatever depends on them — but
+they make different trade-offs. Signals are a Vaadin-native, server-wide (even cluster-wide) state
+layer. Flowik is a MobX-style state model that is not tied to any one toolkit, with Vaadin as one of
+several bindings.
+
+| Aspect                     | Flowik (MobX-style)                                                                                     | Vaadin Signals                                                                                                                |
+|----------------------------|---------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| Scope                      | Toolkit-agnostic core; bindings for Swing, Vaadin Flow and the IntelliJ UI DSL                          | Vaadin Flow only, built into the framework                                                                                    |
+| Language                   | Kotlin-first: delegates (`var name by observable("")`), property refs (`store::name`), context params   | Java API, usable from Kotlin                                                                                                  |
+| State primitives           | `observable`, `observableRef` / `observableStruct`, `observables` (lists), `observableSet`              | Local `ValueSignal`, `ListSignal`; shared `SharedValueSignal`, `SharedNumberSignal`, `SharedListSignal`, `SharedMapSignal`, `SharedNodeSignal` |
+| Object state               | `observable(obj)` splits a data class into one atom per property; `nested` / `nestedList` go deeper     | A signal holds one value, usually an immutable record replaced with `update(...)`; `modify(...)` for mutable objects            |
+| Reading                    | `.value` / `get` anywhere; tracked inside a derivation, a plain read outside one                        | `get()` is tracked and only allowed in a reactive context (effect, computed, transaction); `peek()` everywhere else              |
+| Derived values             | `computed { }` caches until a dependency changes; `computedStruct` / `computedRef` notify only on a real change | `Signal.computed(...)` re-runs on every read; `Signal.cached(...)` caches; `map(...)`, `Signal.not(...)`                    |
+| Side effects               | `autoRun`, `reaction(supply, effect)`, `whenThen(check, effect)`                                        | `Signal.effect(component, ...)` with an `EffectContext` (`isInitialRun`, `isBackgroundChange`); `Signal.unboundEffect(...)`     |
+| Untracked reads            | `untracked { }`                                                                                         | `peek()`, `Signal.untracked(...)`                                                                                             |
+| Writes inside derivations  | Allowed in `autoRun` / reactions; `computed` should stay pure                                           | Effect and computed callbacks run in a read-only transaction; `Signal.runWithoutTransaction(...)` to opt out                    |
+| Batching                   | `action { }` — derivations run once, at the end of the outermost action                                 | `Signal.runInTransaction(...)` — atomic, all-or-nothing, with `verifyValue` / `verifyPosition` checks; shared signals only      |
+| Component binding          | Extension functions over a lambda: `text { }`, `visible { }`, `enabled { }`, `className`, `style`, `value(store::prop)` | Built-in methods: `bindText`, `bindVisible`, `bindEnabled`, `bindValue(signal, setter)`, `bindCssClassNames`, …; `new Span(signal)` |
+| Lists and dynamic children | `items(list) { }` (disposes dropped rows), `childSwitch(observe) { }`                                   | List rendering bound to `ListSignal` / `SharedListSignal`; `moveTo` repositions DOM instead of rebuilding                       |
+| Lifecycle                  | Explicit: every binding registers with a `Bindings` group; `disposeOnDetach()` opts a view in; moving a component keeps its bindings | Implicit: an effect is active while its component is attached and paused while detached; `Registration.remove()` ends it       |
+| Threading                  | UI-thread confined; leave it with `UI.flowAction { }` / `lazyObservableAsync`, which come back through `ui.access` | Thread-safe; local signals can be written from any thread without `ui.access()` (needs `@Push` to reach the browser)            |
+| Multi-user / cluster       | Not built in: state lives where you put it (session, singleton) and is single-node                      | Shared signals sync across sessions and cluster nodes, with compare-and-set `update()`                                         |
+| Async loading              | `lazyObservable` / `lazyObservableAsync` (load on first read, progressive pushes, `pending`, `refresh`), `Flow.toLazyObservable` | Write to a signal from a background thread                                                                     |
+| Edit buffering             | `createViewModel(model)` — buffered edits with `isDirty`, `submit()`, `reset()`                         | Binder integration                                                                                                            |
+| Change detection           | `equals` by default; identity (`observableRef`), deep structural (`observableStruct`) or a custom policy | `Objects.equals` by default; custom equality checker in the constructor                                                       |
+| Error handling             | Reaction errors are logged and not re-thrown; `onError` per reaction                                    | `MissingSignalUsageException` when an effect reads no signal                                                                  |
+
+[vaadin:signals]: https://vaadin.com/docs/latest/flow/ui-state/building-ui#signal-basics
+
 ## Full examples and source
 
 Real, runnable demos live in the repo:
