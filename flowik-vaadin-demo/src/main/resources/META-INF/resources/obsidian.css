@@ -1,0 +1,523 @@
+/* Obsidian demo (demo.vaadin.obsidian). Every class is prefixed with `obs-`. */
+
+/*
+ * The Obsidian-ish light palette every component paints with. Kept in one
+ * place so re-skinning the page — a different accent, a dark variant — stays a
+ * matter of these few lines.
+ */
+.obsidian {
+    --obs-accent: #7c5ce6;
+    --obs-bg-rail: #efefef;
+    --obs-bg-sidebar: #f6f6f6;
+    --obs-bg-editor: #ffffff;
+    --obs-line: #e0e0e0;
+    --obs-icon: #757575;
+    --obs-icon-active: #2e2e2e;
+    --obs-hover: #e4e4e4;
+    --obs-active: #d9d7e8;
+    --obs-text: #333333;
+    --obs-muted: #9b9b9b;
+    --obs-selection: #e6e2f8;
+
+    --obs-slide-ms: 220ms;
+    --obs-tab-ms: 170ms;
+
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: var(--obs-bg-editor);
+    color: var(--obs-text);
+    font-size: 14px;
+    color-scheme: light;
+}
+
+.obsidian vaadin-icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Shared widgets */
+
+.obs-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    padding: 6px 7px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--obs-icon);
+    cursor: pointer;
+}
+
+.obs-icon-button:hover {
+    background: var(--obs-hover);
+}
+
+.obs-icon-button.active {
+    background: var(--obs-active);
+    color: var(--obs-icon-active);
+}
+
+.obs-icon-button:focus-visible {
+    outline: 2px solid var(--obs-accent);
+    outline-offset: -2px;
+}
+
+.obs-icon-button.small {
+    padding: 4px;
+}
+
+.obs-icon-button.small vaadin-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.obs-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--obs-accent);
+    font-size: 15px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.obs-link:hover {
+    text-decoration: underline;
+}
+
+.obs-link vaadin-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.obs-caption {
+    color: var(--obs-muted);
+    font-size: 12px;
+}
+
+.obs-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.obs-row.end {
+    justify-content: flex-end;
+}
+
+.obs-separator {
+    width: 1px;
+    height: 18px;
+    margin-inline: 4px;
+    background: var(--obs-line);
+}
+
+.obs-grow {
+    flex: 1;
+}
+
+.obs-placeholder {
+    display: block;
+    padding: 28px 12px 12px;
+    text-align: center;
+}
+
+/* Top bar */
+
+.obs-top-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    flex: none;
+    height: 40px;
+    padding-inline: 6px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--obs-line);
+    background: var(--obs-bg-sidebar);
+}
+
+.obs-top-title {
+    overflow: hidden;
+    color: var(--obs-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Main area */
+
+.obs-main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.obs-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: none;
+    gap: 2px;
+    padding: 6px 4px;
+    border-inline-end: 1px solid var(--obs-line);
+    background: var(--obs-bg-rail);
+}
+
+/*
+ * Sliding sidebars: the wrapper's width transitions while the panel inside
+ * keeps its own, pinned to the docked edge, so it is clipped rather than
+ * squeezed. Once collapsed it also leaves the tab order.
+ */
+.obs-slide {
+    display: flex;
+    flex: none;
+    width: var(--obs-slide-width);
+    overflow: hidden;
+    transition: width var(--obs-slide-ms) ease-in-out, visibility 0s;
+}
+
+.obs-slide-left {
+    justify-content: flex-end;
+}
+
+.obs-slide > * {
+    flex: none;
+    width: var(--obs-slide-width);
+    box-sizing: border-box;
+}
+
+.obs-slide.collapsed {
+    width: 0;
+    visibility: hidden;
+    transition: width var(--obs-slide-ms) ease-in-out, visibility 0s var(--obs-slide-ms);
+}
+
+/* Left sidebar */
+
+.obs-sidebar {
+    display: flex;
+    flex-direction: column;
+    border-inline-end: 1px solid var(--obs-line);
+    background: var(--obs-bg-sidebar);
+}
+
+.obs-sidebar-actions {
+    justify-content: center;
+    padding: 4px 6px;
+}
+
+.obs-filter {
+    padding: 0 8px 6px;
+}
+
+.obs-section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 2px 12px 6px;
+}
+
+.obs-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.obs-sidebar-content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.obs-note-list {
+    padding: 2px 4px 4px;
+}
+
+.obs-note-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.obs-note-row > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.obs-note-row vaadin-icon {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    color: var(--obs-icon);
+}
+
+.obs-note-row:hover {
+    background: var(--obs-hover);
+}
+
+.obs-note-row.active {
+    background: var(--obs-selection);
+}
+
+.obs-note-row:focus-visible {
+    outline: 2px solid var(--obs-accent);
+    outline-offset: -2px;
+}
+
+.obs-sidebar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    border-top: 1px solid var(--obs-line);
+}
+
+.obs-vault-name {
+    margin-inline-start: 4px;
+    color: var(--obs-text);
+}
+
+/* Editor area */
+
+.obs-editor-area {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--obs-bg-editor);
+}
+
+.obs-tab-strip {
+    display: flex;
+    align-items: flex-end;
+    flex: none;
+    height: 36px;
+    padding-inline-start: 6px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--obs-line);
+    background: var(--obs-bg-sidebar);
+}
+
+.obs-tab-list {
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+    height: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.obs-new-tab {
+    align-self: center;
+    margin-inline-start: 4px;
+}
+
+/*
+ * A tab grows into place when it is added, and collapses before it is closed:
+ * the server waits for the `obs-tab-collapse` animation to end. With reduced
+ * motion the animations still run — for a millisecond — so that event fires.
+ */
+.obs-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: none;
+    gap: 6px;
+    max-width: 220px;
+    height: 30px;
+    padding: 0 4px 0 10px;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-radius: 6px 6px 0 0;
+    white-space: nowrap;
+    cursor: pointer;
+    animation: obs-tab-grow var(--obs-tab-ms) ease-out;
+}
+
+.obs-tab + .obs-tab::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 1px;
+    height: 16px;
+    background: var(--obs-line);
+}
+
+.obs-tab:hover {
+    background: var(--obs-hover);
+}
+
+.obs-tab.active {
+    margin-bottom: -1px;
+    height: 31px;
+    background: var(--obs-bg-editor);
+    box-shadow: inset 0 -2px 0 var(--obs-accent);
+}
+
+.obs-tab.active::before,
+.obs-tab.active + .obs-tab::before {
+    display: none;
+}
+
+.obs-tab.closing {
+    animation: obs-tab-collapse var(--obs-tab-ms) ease-out forwards;
+    pointer-events: none;
+}
+
+.obs-tab > vaadin-icon {
+    flex: none;
+    width: 13px;
+    height: 13px;
+    color: var(--obs-icon);
+}
+
+.obs-tab-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@keyframes obs-tab-grow {
+    from {
+        max-width: 46px;
+    }
+    to {
+        max-width: 220px;
+    }
+}
+
+@keyframes obs-tab-collapse {
+    to {
+        max-width: 0;
+        padding: 0;
+        gap: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .obsidian {
+        --obs-slide-ms: 1ms;
+        --obs-tab-ms: 1ms;
+    }
+}
+
+.obs-editor-host {
+    flex: 1;
+    min-height: 0;
+}
+
+.obs-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.obs-editor-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    flex: none;
+    padding: 2px 8px;
+}
+
+.obs-inline-title {
+    color: var(--obs-text);
+    font-size: 13px;
+}
+
+.obs-editor-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+/* A plain page to write on, at Obsidian's readable line length. */
+.obs-editor-text {
+    display: block;
+    width: 100%;
+    max-width: 760px;
+    min-height: 100%;
+    margin: 0 auto;
+    padding: 4px 28px 24px;
+    box-sizing: border-box;
+    --vaadin-input-field-background: transparent;
+    --vaadin-input-field-border-width: 0;
+    --vaadin-input-field-border-color: transparent;
+    --vaadin-input-field-value-font-size: 15px;
+    --vaadin-input-field-value-color: var(--obs-text);
+    --vaadin-focus-ring-width: 0;
+}
+
+.obs-editor-text::part(input-field) {
+    min-height: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+    caret-color: var(--obs-accent);
+}
+
+.obs-editor-text > textarea {
+    line-height: 1.6;
+}
+
+.obs-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    height: 100%;
+}
+
+/* Right sidebar */
+
+.obs-backlinks {
+    display: flex;
+    flex-direction: column;
+    border-inline-start: 1px solid var(--obs-line);
+    background: var(--obs-bg-sidebar);
+}
+
+.obs-backlinks > .obs-row {
+    padding: 4px 6px;
+}
+
+.obs-mentions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 14px;
+}
+
+.obs-mentions-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.obs-mentions-title {
+    color: var(--obs-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.obs-mentions-title.muted {
+    margin-top: 10px;
+    color: var(--obs-muted);
+    font-weight: 400;
+}
+
+.obs-backlinks-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}

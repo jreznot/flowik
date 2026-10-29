@@ -2,7 +2,9 @@ package flowik.vaadin
 
 import com.vaadin.flow.component.AbstractField
 import com.vaadin.flow.component.ClickEvent
+import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.ComponentUtil
+import com.vaadin.flow.component.Focusable
 import com.vaadin.flow.component.avatar.Avatar
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.Span
@@ -11,6 +13,9 @@ import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
+import com.vaadin.flow.dom.DomEvent
+import com.vaadin.flow.internal.JacksonUtils
+import com.vaadin.flow.internal.nodefeature.ElementListenerMap
 import flowik.core.Bindings
 import flowik.core.MutableObservable
 import flowik.core.ObservableList
@@ -35,6 +40,18 @@ class BindingsTest {
         init {
             add(caption)
         }
+    }
+
+    /**
+     * Sends a DOM event the way the browser would. Each listener's filter is
+     * evaluated on the client and its result sent along; [passing] says what
+     * the browser decided for all of them.
+     */
+    private fun Component.fireDomEvent(type: String, passing: Boolean = true) {
+        val listeners = element.node.getFeature(ElementListenerMap::class.java)
+        val data = JacksonUtils.createObjectNode()
+        listeners.getExpressions(type).forEach { data.put(it, passing) }
+        listeners.fireEvent(DomEvent(element, type, data))
     }
 
     @Test
@@ -283,5 +300,99 @@ class BindingsTest {
         ComponentUtil.onComponentDetach(row)
         action { text.value = "detached" }
         assertEquals("still here", row.caption.text)
+    }
+
+    @Test
+    fun `children still showing are disposed with the group that built them`() {
+        val text = observable("shown")
+        val bindings = Bindings()
+        val rows = mutableListOf<Row>()
+        context(bindings) {
+            VerticalLayout().items(ObservableList(listOf("a"))) { Row(text).also { rows.add(it) } }
+            VerticalLayout().items({ listOf("b") }) { Row(text).also { rows.add(it) } }
+            Div().childSwitch({ "c" }) { Row(text).also { rows.add(it) } }
+        }
+        assertEquals(3, rows.size)
+
+        bindings.dispose()
+        action { text.value = "owner gone" }
+        assertEquals(listOf("shown", "shown", "shown"), rows.map { it.caption.text })
+    }
+
+    @Test
+    fun `onDomEvent runs the handler as an action, if the filter passed`() {
+        val a = observable(0)
+        val b = observable(0)
+        val seen = mutableListOf<Pair<Int, Int>>()
+        Bindings().autoRun { seen.add(a.value to b.value) }
+
+        val row = Div()
+        row.onDomEvent("keydown", filter = "event.key === 'Enter'") {
+            a.value++
+            b.value++
+        }
+
+        row.fireDomEvent("keydown", passing = false)
+        assertEquals(listOf(0 to 0), seen)
+
+        row.fireDomEvent("keydown")
+        assertEquals(listOf(0 to 0, 1 to 1), seen)
+    }
+
+    @Test
+    fun `onAnimationEnd waits for the named animation on the component itself`() {
+        var ended = 0
+        val tab = Div()
+        tab.onAnimationEnd("tab-collapse") { ended++ }
+
+        val filter = tab.element.node.getFeature(ElementListenerMap::class.java).getExpressions("animationend")
+        assertEquals(setOf("event.target === element && event.animationName === 'tab-collapse'"), filter)
+
+        tab.fireDomEvent("animationend")
+        assertEquals(1, ended)
+    }
+
+    @Test
+    fun `activeWhen keeps the class and aria-selected together`() {
+        val active = observable(false)
+        val tab = Div().apply { addClassName("tab") }
+        context(Bindings()) {
+            tab.activeWhen { active.value }
+        }
+        assertEquals(setOf("tab"), tab.classNames.toSet())
+        assertEquals("false", tab.element.getAttribute("aria-selected"))
+
+        action { active.value = true }
+        assertEquals(setOf("tab", "active"), tab.classNames.toSet())
+        assertEquals("true", tab.element.getAttribute("aria-selected"))
+    }
+
+    private class FocusCounter : Div(), Focusable<FocusCounter> {
+        var focused = 0
+        override fun focus() {
+            focused++
+        }
+    }
+
+    @Test
+    fun `focusWhen focuses each time the condition turns true`() {
+        val shown = observable(false)
+        val other = observable(0)
+        val field = FocusCounter()
+        context(Bindings()) {
+            field.focusWhen { other.value; shown.value }
+        }
+        assertEquals(0, field.focused)
+
+        action { shown.value = true }
+        assertEquals(1, field.focused)
+
+        // Still true: no second focus.
+        action { other.value = 1 }
+        assertEquals(1, field.focused)
+
+        action { shown.value = false }
+        action { shown.value = true }
+        assertEquals(2, field.focused)
     }
 }

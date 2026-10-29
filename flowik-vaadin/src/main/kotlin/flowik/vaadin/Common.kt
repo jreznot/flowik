@@ -2,6 +2,7 @@ package flowik.vaadin
 
 import com.vaadin.flow.component.ClickNotifier
 import com.vaadin.flow.component.Component
+import com.vaadin.flow.component.Focusable
 import com.vaadin.flow.component.HasEnabled
 import com.vaadin.flow.component.HasLabel
 import com.vaadin.flow.component.HasStyle
@@ -65,6 +66,36 @@ context(bindings: Bindings)
 fun HasStyle.className(name: String, provider: Supplier<Boolean>) {
     bindings.autoRun("HasStyle.className($name)") {
         setClassName(name, provider.get())
+    }
+}
+
+/**
+ * Marks the current item of a list, a tab strip or a menu: toggles the
+ * `active` class and keeps `aria-selected` in step, so the highlight and what
+ * a screen reader announces never disagree. Pass [className] to use another
+ * class.
+ */
+context(bindings: Bindings)
+fun Component.activeWhen(className: String = "active", provider: Supplier<Boolean>) {
+    bindings.autoRun("Component.activeWhen") {
+        val active = provider.get()
+        element.classList.set(className, active)
+        element.setAttribute("aria-selected", active.toString())
+    }
+}
+
+/**
+ * Moves the caret into this field each time [provider] turns `true` — a
+ * search box revealed by a button, an inline editor that opens. It does not
+ * blur the field when [provider] turns `false` again.
+ */
+context(bindings: Bindings)
+fun Focusable<*>.focusWhen(provider: Supplier<Boolean>) {
+    var wanted = false
+    bindings.autoRun("Focusable.focusWhen") {
+        val now = provider.get()
+        if (now && !wanted) focus()
+        wanted = now
     }
 }
 

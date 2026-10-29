@@ -203,8 +203,24 @@ your back:
   merely *moved* between layouts, and that must not kill a binding;
 - `register(child)` hands a nested component's group to its owner, so one `dispose()` releases the
   tree;
-- `items { }` disposes the children it drops, so a row that owns bindings stops following its item
-  when it leaves the list.
+- `items { }` and `childSwitch { }` dispose the children they drop, so a row that owns bindings
+  stops following its item when it leaves the list — and the children still showing go with the
+  group they were bound in.
+
+Events reach the store the same way they do from a `Button`: as an action, so a handler that
+writes several observables re-renders once.
+
+- `onClick { }` for anything clickable, and `onDomEvent("keydown", filter = "event.key ===
+  'Enter'") { }` for any other DOM event — the filter is JavaScript the browser evaluates, so
+  events nobody wants never make the round trip;
+- `onAnimationEnd("collapse") { }` lets a CSS exit animation finish before the model changes —
+  add the class that starts it, and close the tab in the handler;
+- `shortcut(Key.KEY_N, KeyModifier.ALT) { }` is a keyboard shortcut that lives as long as the
+  component it is declared on.
+
+Two small bindings cover what lists and tabs keep needing: `activeWhen { }` toggles the `active`
+class and `aria-selected` together, and `focusWhen { }` puts the caret in a field each time a
+condition turns true — a search box that a button reveals.
 
 ### Using it from a plugin (`flowik-intellij`)
 
@@ -858,7 +874,9 @@ Real, runnable demos live in the repo:
 - [`flowik-swing-demo`](flowik-swing-demo) — a Todo app showing list filtering, computed totals,
   keyboard navigation, and conditional visibility.
 - [`flowik-vaadin-demo`](flowik-vaadin-demo) — the same Todo app on Vaadin Flow with property
-  delegates and two-way input bindings.
+  delegates and two-way input bindings, a master/detail Employees page, and an
+  [Obsidian-like note editor](flowik-vaadin-demo/src/main/kotlin/demo/vaadin/obsidian) ported from
+  the Swing demo: sliding sidebars, animated tabs and keyboard shortcuts.
 - [`flowik-intellij-demo`](flowik-intellij-demo) — an IDE plugin with a tool window built from the
   Kotlin UI DSL: live two-way bindings, a computed label, and a conditionally visible row
 

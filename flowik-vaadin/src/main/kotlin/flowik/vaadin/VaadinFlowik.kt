@@ -17,8 +17,9 @@
  *     }
  *
  * Groups nest, so a child registered with `register(child)` is released by its
- * owner, and a container that builds children as it runs — `items { }` —
- * disposes the ones it drops.
+ * owner, and a container that builds children as it runs — `items { }`,
+ * `childSwitch { }` — disposes the ones it drops, and the rest along with the
+ * group it was bound in.
  */
 
 package flowik.vaadin
@@ -71,6 +72,19 @@ fun <C> C.disposeOnDetach(): C where C : Component, C : Bindings = disposeOnDeta
  */
 internal fun disposeIfOwned(component: Any?) {
     (component as? Disposable)?.dispose()
+}
+
+/**
+ * Has [bindings] dispose the children a container built, whichever are still
+ * showing [children] when the group itself is disposed. The container dropping
+ * them one by one is not enough: the owner going away drops them all at once.
+ */
+internal fun disposeChildrenWith(bindings: Bindings, children: () -> Iterable<Any?>) {
+    bindings.register(object : Disposable {
+        override fun dispose() {
+            children().toList().forEach { disposeIfOwned(it) }
+        }
+    })
 }
 
 /**
