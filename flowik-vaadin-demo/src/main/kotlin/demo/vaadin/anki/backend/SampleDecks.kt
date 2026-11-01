@@ -1,5 +1,9 @@
-package demo.vaadin.anki
+package demo.vaadin.anki.backend
 
+import demo.vaadin.anki.CardState
+import demo.vaadin.anki.Schedule
+import demo.vaadin.anki.localDate
+import java.time.Clock
 import java.time.Duration
 
 private val CAPITALS = listOf(
@@ -61,13 +65,14 @@ private val FLOWIK = listOf(
 )
 
 /**
- * Fills a fresh store with three decks. Part of one is already under review,
+ * Fills a fresh database with three decks. Part of one is already under review,
  * with cards due today and tomorrow, so the counts are not all "new" at start
  * and skipping a day has something to show.
  */
-internal fun seedSampleDecks(store: AnkiStore) {
-    val today = store.today
-    val zone = store.zone
+internal fun seedSampleDecks(db: InMemoryAnkiDatabase, clock: Clock) {
+    val now = clock.instant()
+    val zone = clock.zone
+    val today = localDate(now, zone)
 
     fun reviewed(daysFromToday: Long, interval: Int, ease: Double = 2.5, reps: Int = 3) = Schedule(
         state = CardState.REVIEW,
@@ -77,17 +82,19 @@ internal fun seedSampleDecks(store: AnkiStore) {
         reps = reps
     )
 
-    store.createDeck("Capitals of Europe", "Countries on the front, their capitals on the back.")?.let { deck ->
-        CAPITALS.forEach { (country, capital) -> store.addCard(deck, "What is the capital of $country?", capital) }
+    db.insertDeck("Capitals of Europe", "Countries on the front, their capitals on the back.").let { deck ->
+        CAPITALS.forEach { (country, capital) ->
+            db.insertCard(deck.id, "What is the capital of $country?", capital, Schedule())
+        }
     }
 
-    store.createDeck("Spanish Basics", "Everyday words. The first half is already being reviewed.")?.let { deck ->
+    db.insertDeck("Spanish Basics", "Everyday words. The first half is already being reviewed.").let { deck ->
         val schedules = listOf(
             reviewed(-3, 4), reviewed(-1, 6, ease = 2.35), reviewed(0, 3), reviewed(0, 10, ease = 2.65, reps = 5),
             reviewed(0, 2, reps = 2), reviewed(1, 5), reviewed(1, 3), reviewed(2, 8, reps = 4),
             Schedule(
                 state = CardState.RELEARNING,
-                due = store.now - Duration.ofMinutes(2),
+                due = now - Duration.ofMinutes(2),
                 intervalDays = 1,
                 ease = 2.3,
                 reps = 6,
@@ -95,11 +102,11 @@ internal fun seedSampleDecks(store: AnkiStore) {
             )
         )
         SPANISH.forEachIndexed { index, (english, spanish) ->
-            store.addCard(deck, english, spanish, schedules.getOrElse(index) { Schedule() })
+            db.insertCard(deck.id, english, spanish, schedules.getOrElse(index) { Schedule() })
         }
     }
 
-    store.createDeck("Flowik API", "The library this demo is built with.")?.let { deck ->
-        FLOWIK.forEach { (question, answer) -> store.addCard(deck, question, answer) }
+    db.insertDeck("Flowik API", "The library this demo is built with.").let { deck ->
+        FLOWIK.forEach { (question, answer) -> db.insertCard(deck.id, question, answer, Schedule()) }
     }
 }

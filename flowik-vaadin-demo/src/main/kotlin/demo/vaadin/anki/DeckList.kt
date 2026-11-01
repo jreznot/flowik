@@ -17,17 +17,17 @@ import java.util.function.Supplier
  * Anki's main screen: every deck with its New / Learn / Due counts for today.
  *
  * Stateless in the Compose sense: it is handed the decks and a way to read
- * each one's queue, and reports what the user does. The rows follow [decks]
- * one by one, and each count reads [queueOf] — derived state, so answering a
- * card anywhere re-counts the row with nothing here listening for it.
+ * each one's counts, and reports what the user does. The rows follow [decks]
+ * one by one, and each count reads [countsOf] — observable state, so answering
+ * a card anywhere re-counts the row with nothing here listening for it.
  *
- * @param queueOf      today's queue of a deck; read inside the bindings, so it
- *                     must be derived from observables to be followed
+ * @param countsOf     today's counts of a deck; read inside the bindings, so it
+ *                     must come from observables to be followed
  * @param studiedToday how many cards were answered today
  */
 class DeckList(
     decks: ObservableList<ObservableEntity<Deck>>,
-    queueOf: (ObservableEntity<Deck>) -> DeckQueue,
+    countsOf: (ObservableEntity<Deck>) -> DeckCounts,
     studiedToday: Supplier<Int>,
     onOpenDeck: (ObservableEntity<Deck>) -> Unit,
     onDeckOptions: (ObservableEntity<Deck>) -> Unit,
@@ -51,7 +51,7 @@ class DeckList(
             items(decks) { deck ->
                 DeckRow(
                     deck,
-                    queue = { queueOf(deck) },
+                    counts = { countsOf(deck) },
                     onOpen = { onOpenDeck(deck) },
                     onOptions = { onDeckOptions(deck) }
                 )
@@ -78,7 +78,7 @@ class DeckList(
 /** One deck: its name, which opens the overview, today's counts and an options button. */
 class DeckRow(
     deck: ObservableEntity<Deck>,
-    queue: Supplier<DeckQueue>,
+    counts: Supplier<DeckCounts>,
     onOpen: () -> Unit,
     onOptions: () -> Unit
 ) : Div(), Bindings by Bindings() {
@@ -91,7 +91,7 @@ class DeckRow(
                 text { deck[Deck::name] }
             },
             *Queue.entries.map { q ->
-                QueueCount(q) { queue.get().count(q) }.apply { addClassName("anki-col-count") }
+                QueueCount(q) { counts.get().count(q) }.apply { addClassName("anki-col-count") }
             }.toTypedArray(),
             IconButton(VaadinIcon.COG, "Options", onOptions).apply { addClassName("anki-col-action") }
         )

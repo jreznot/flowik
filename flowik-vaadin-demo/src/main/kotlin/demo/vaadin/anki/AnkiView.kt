@@ -29,11 +29,14 @@ import flowik.vaadin.disposeOnDetach
 @Route("anki")
 @PageTitle("Flowik Anki")
 @StyleSheet("anki.css")
-class AnkiView(private val store: AnkiStore) : Div(), Bindings by Bindings() {
+class AnkiView(
+    private val store: AnkiStore
+) : Div(), Bindings by Bindings() {
 
     init {
         addClassName("anki")
-        store.tick()
+        // A new view for every visit to the page, so this is when the data is (re)loaded.
+        store.refresh()
 
         val topBar = register(
             TopBar(
@@ -59,7 +62,7 @@ class AnkiView(private val store: AnkiStore) : Div(), Bindings by Bindings() {
     private fun screenFor(screen: Screen): Component = when (screen) {
         Screen.Decks -> DeckList(
             decks = store.decks,
-            queueOf = store::queueOf,
+            countsOf = store::countsOf,
             studiedToday = store::studiedToday,
             onOpenDeck = store::showOverview,
             onDeckOptions = ::openDeckOptions,
@@ -138,7 +141,7 @@ class AnkiView(private val store: AnkiStore) : Div(), Bindings by Bindings() {
     private fun openDeckOptions(deck: ObservableEntity<Deck>) {
         DeckOptionsDialog(
             deck,
-            cardCount = { store.cardsOf(deck).size },
+            cardCount = { store.countsOf(deck).total },
             isNameTaken = { store.isDeckNameTaken(it, except = deck) },
             onSave = { changes -> store.updateDeck(deck, changes) },
             onDelete = { store.deleteDeck(deck) }

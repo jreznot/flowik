@@ -21,7 +21,7 @@ package flowik.core
  * An entry lives while something observes it. Once its last reader is gone —
  * at the end of the batch or flush, see [ObservationHooks] — it is dropped, and
  * with it whatever its computation read, so a `computedFn` over a long-lived
- * store does not accumulate entries for keys nobody shows any more.
+ * store does not accumulate entries for keys nobody shows anymore.
  *
  * Called outside any reaction, an unknown key is simply evaluated and nothing
  * is cached, as an unobserved [Computed] would: there would be nothing to keep

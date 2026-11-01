@@ -80,10 +80,13 @@ enum class Answer(val title: String, val key: Int) {
 
 /**
  * One answered card, kept so the day's limits can be counted and the answer
- * undone — [before] is what [card]'s schedule goes back to.
+ * undone — [before] is what the card's schedule goes back to. Plain ids, not
+ * entities: today's reviews are loaded whether or not their decks' cards are.
  */
-data class ReviewEntry(
-    val card: ObservableEntity<Card>,
+data class Review(
+    val id: Long,
+    val cardId: Long,
+    val deckId: Long,
     val time: Instant,
     val answer: Answer,
     val before: Schedule

@@ -6,6 +6,10 @@ import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.select.Select
 import com.vaadin.flow.component.textfield.TextField
 import demo.vaadin.anki.*
+import demo.vaadin.anki.backend.InMemoryAnkiDatabase
+import demo.vaadin.anki.backend.InMemoryCardService
+import demo.vaadin.anki.backend.InMemoryDeckService
+import demo.vaadin.anki.backend.InMemoryReviewService
 import flowik.core.ObservableEntity
 import flowik.core.action
 import flowik.core.autoRun
@@ -17,6 +21,7 @@ import flowik.vaadin.testing.isShown
 import flowik.vaadin.testing.setValueFromClient
 import flowik.vaadin.testing.simulateClick
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import org.junit.jupiter.api.Test
@@ -28,6 +33,11 @@ import kotlin.test.assertTrue
 class AnkiViewTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC)
+
+    private val db = InMemoryAnkiDatabase(clock)
+
+    private fun store(clock: Clock = this.clock) =
+        AnkiStore(InMemoryDeckService(db), InMemoryCardService(db), InMemoryReviewService(db), clock)
 
     private fun Component.shown(className: String) = findByClass(className).filter { it.isShown() }
 
@@ -62,7 +72,7 @@ class AnkiViewTest {
 
     @Test
     fun `the deck list counts what is due today within the limits`() {
-        val view = AnkiView(AnkiStore(clock))
+        val view = AnkiView(store())
 
         assertEquals(
             mapOf(
@@ -76,7 +86,7 @@ class AnkiViewTest {
 
     @Test
     fun `studying shows learning cards first, then the most overdue reviews`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         store.study(store.deck("Spanish Basics"))
 
@@ -101,15 +111,15 @@ class AnkiViewTest {
 
     @Test
     fun `answering a card recounts only its own deck`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         val capitals = store.deck("Capitals of Europe")
         val spanish = store.deck("Spanish Basics")
+        store.study(spanish)
         var capitalsRuns = 0
         var spanishRuns = 0
-        autoRun { capitalsRuns++; store.queueOf(capitals) }
-        autoRun { spanishRuns++; store.queueOf(spanish) }
-        store.study(spanish)
+        autoRun { capitalsRuns++; store.countsOf(capitals) }
+        autoRun { spanishRuns++; store.countsOf(spanish) }
 
         view.answer(Answer.GOOD)
 
@@ -119,7 +129,7 @@ class AnkiViewTest {
 
     @Test
     fun `undo puts the card back and shows it again`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         store.study(store.deck("Spanish Basics"))
         val cat = store.card("cat")
@@ -143,7 +153,7 @@ class AnkiViewTest {
 
     @Test
     fun `undo goes back to the deck the card came from`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         val spanish = store.deck("Spanish Basics")
         store.study(spanish)
@@ -153,13 +163,14 @@ class AnkiViewTest {
         assertEquals("Create a mutable atom", view.cardFront())
 
         view.undo()
-        assertEquals(Screen.Study(spanish, resume = store.card("cat")), store.screen)
+        val study = store.screen as Screen.Study
+        assertTrue(study.deck === spanish && study.resume === store.card("cat"))
         assertEquals("cat", view.cardFront())
     }
 
     @Test
     fun `the new card limit ends the day with a congratulations screen`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         val deck = store.deck("Flowik API")
         action { deck[Deck::newPerDay] = 2 }
@@ -175,7 +186,7 @@ class AnkiViewTest {
 
     @Test
     fun `learning cards are shown ahead of time once nothing else is left`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         val deck = store.deck("Flowik API")
         action { deck[Deck::newPerDay] = 1 }
@@ -193,20 +204,29 @@ class AnkiViewTest {
 
     @Test
     fun `skipping a day brings tomorrow's reviews due`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         val spanish = store.deck("Spanish Basics")
+        val flowik = store.deck("Flowik API")
+        store.showOverview(flowik)
+        store.showOverview(spanish)
         assertEquals(2, store.queueOf(spanish).dueTomorrow)
 
+        // Spanish counts itself from its loaded cards.
         view.descendants().single { it.hasClass("anki-next-day") }.simulateClick()
-
         assertEquals(1, store.daysShifted)
+        assertEquals(DeckCounts(6, 1, 7, 15), store.countsOf(spanish))
+
+        // Back on the deck list nothing is loaded, and the backend counts for the shifted day.
+        store.showDecks()
         assertEquals(listOf("6", "1", "7"), view.deckCounts()["Spanish Basics"])
+        view.descendants().single { it.hasClass("anki-next-day") }.simulateClick()
+        assertEquals(listOf("6", "1", "8"), view.deckCounts()["Spanish Basics"])
     }
 
     @Test
     fun `navigation swaps the screen and the browser filters as you type`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
 
         view.descendants().filterIsInstance<DeckRow>().first().descendants().single { it.hasClass("anki-link") }.simulateClick()
@@ -224,7 +244,7 @@ class AnkiViewTest {
 
     @Test
     fun `the browser keeps its rows in step with the cards`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         store.browse(store.deck("Spanish Basics"))
         val grid = view.find<Grid<ObservableEntity<Card>>>().single()
@@ -243,7 +263,7 @@ class AnkiViewTest {
 
     @Test
     fun `deleting a deck removes its cards and leaves its screens`() {
-        val store = AnkiStore(clock)
+        val store = store()
         val view = AnkiView(store)
         val capitals = store.deck("Capitals of Europe")
         store.showOverview(capitals)
@@ -252,6 +272,109 @@ class AnkiViewTest {
 
         assertEquals(Screen.Decks, store.screen)
         assertEquals(2, view.descendants().filterIsInstance<DeckRow>().size)
-        assertEquals(27, store.cards.size)
+        assertTrue(store.cards.isEmpty(), "its cards were the only ones loaded")
+    }
+
+    @Test
+    fun `cards are loaded only for the decks that need them`() {
+        val store = store()
+        val view = AnkiView(store)
+        assertTrue(store.cards.isEmpty(), "the deck list shows the backend's counts")
+        assertEquals(DeckCounts(12, 0, 0, 12), store.countsOf(store.deck("Flowik API")))
+
+        store.showOverview(store.deck("Capitals of Europe"))
+        assertEquals(setOf("Capitals of Europe"), store.cards.items.mapNotNull { store.deckOf(it)?.get(Deck::name) }.toSet())
+
+        // Adding a card loads its deck, which then counts it.
+        store.showDecks()
+        store.addCard(store.deck("Flowik API"), "Dispose a group of bindings", "dispose()")
+        assertEquals(13, store.cards.size)
+        assertEquals(listOf("13", "0", "0"), view.deckCounts()["Flowik API"])
+
+        // So does lowering a deck's limit.
+        store.updateDeck(store.deck("Spanish Basics"), Deck(0, "Spanish Basics", newPerDay = 2, reviewsPerDay = 3))
+        assertEquals(listOf("2", "1", "3"), view.deckCounts()["Spanish Basics"])
+
+        store.browse(null)
+        assertEquals(50, store.cards.size)
+    }
+
+    @Test
+    fun `a new store loads what the last one saved`() {
+        val first = store()
+        val view = AnkiView(first)
+        first.study(first.deck("Spanish Basics"))
+        view.answer(Answer.GOOD)
+        first.updateCard(first.card("dog"), "the dog", "el perro")
+        first.deleteDeck(first.deck("Capitals of Europe"))
+        first.createDeck("German")?.let { first.addCard(it, "house", "das Haus") }
+
+        // As if the page were opened in a new tab: a fresh store over the same backend.
+        val second = store()
+        assertTrue(second.decks.isEmpty(), "nothing is loaded until the page is shown")
+        second.refresh()
+        assertEquals(listOf("Spanish Basics", "Flowik API", "German"), second.decks.items.map { it[Deck::name] })
+        assertEquals(listOf("6", "0", "5"), AnkiView(second).deckCounts()["Spanish Basics"])
+        assertEquals(1, second.studiedToday)
+        assertTrue(second.cards.isEmpty())
+
+        // Undo loads the deck of the answer it takes back.
+        second.undo()
+        val study = second.screen as Screen.Study
+        assertTrue(study.deck === second.deck("Spanish Basics") && study.resume === second.card("cat"))
+        assertEquals("el perro", second.card("the dog")[Card::back])
+        val third = store().apply { refresh(); browse(null) }
+        assertEquals(CardState.RELEARNING, third.card("cat")[Card::schedule].state)
+    }
+
+    @Test
+    fun `a new store loads only today's reviews`() {
+        val first = store()
+        val view = AnkiView(first)
+        first.study(first.deck("Spanish Basics"))
+        view.answer(Answer.GOOD)
+
+        val tomorrow = store(Clock.offset(clock, Duration.ofDays(1))).apply { refresh() }
+        assertEquals(0, tomorrow.studiedToday)
+        assertFalse(tomorrow.canUndo)
+        assertEquals(1, store().apply { refresh() }.studiedToday)
+    }
+
+    @Test
+    fun `going back to the deck list picks up other tabs' changes`() {
+        val mine = store()
+        val view = AnkiView(mine)
+        val theirs = store().apply { refresh(); browse(null) }
+        mine.showOverview(mine.deck("Spanish Basics"))
+
+        theirs.createDeck("German")
+        theirs.updateCard(theirs.card("cat"), "the cat", "el gato")
+        assertEquals(3, mine.decks.size, "not until the deck list is shown again")
+
+        mine.showDecks()
+        assertEquals(4, view.descendants().filterIsInstance<DeckRow>().size)
+        mine.browse(mine.deck("Spanish Basics"))
+        assertEquals("el gato", mine.card("the cat")[Card::back])
+    }
+
+    @Test
+    fun `refreshing keeps the screen on the same deck and card`() {
+        val store = store()
+        val view = AnkiView(store)
+        store.study(store.deck("Spanish Basics"))
+        view.answer(Answer.GOOD)
+        view.undo()
+
+        store.refresh()
+
+        val study = store.screen as Screen.Study
+        assertTrue(study.deck === store.deck("Spanish Basics"), "points at the reloaded deck")
+        assertTrue(study.resume === store.card("cat"), "and the reloaded card")
+        assertEquals("cat", view.cardFront())
+
+        // The same card undone again: a new session that deals it again.
+        view.answer(Answer.GOOD)
+        view.undo()
+        assertEquals("cat", view.cardFront())
     }
 }
