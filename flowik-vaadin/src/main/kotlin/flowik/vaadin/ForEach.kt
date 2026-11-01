@@ -48,6 +48,15 @@ fun <T, L> L.items(list: ObservableList<T>, map: (T) -> Component)
                 disposeIfOwned(old)
             }
 
+            is ListChange.Move -> {
+                // The row moves as it is: its bindings do not depend on attachment,
+                // so detaching it on the way is harmless.
+                val comp = children.removeAt(change.from)
+                children.add(change.to, comp)
+                remove(comp)
+                addComponentAtIndex(change.to, comp)
+            }
+
             is ListChange.Clear -> {
                 children.forEach { disposeIfOwned(it) }
                 children.clear()

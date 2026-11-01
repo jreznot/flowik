@@ -98,6 +98,8 @@ sealed class LazyObservable<T>(
 
     private val pendingAtom = ObservableValue(false, name?.let { "$it-pending" })
 
+    private val errorAtom = ObservableValue<Throwable?>(null, name?.let { "$it-error" })
+
     /** `true` once a read has started the computation; cleared by [reset]. */
     private var started = false
 
@@ -118,6 +120,22 @@ sealed class LazyObservable<T>(
      * observable, also clears it when the body finishes or fails.
      */
     val pending: ReadableObservable<Boolean> get() = pendingAtom
+
+    /**
+     * What the computation failed with, or `null` — the rejected state of
+     * mobx-utils `fromPromise`. Auto-tracks, so a view can show it in place of
+     * the value:
+     *
+     * ```kotlin
+     * Label { store.planets.error.value?.let { "Failed: ${it.message}" } ?: "${store.planets.value.size} planets" }
+     * ```
+     *
+     * Set when the current run throws — together with [pending] going `false` —
+     * and cleared when [refresh] or [reset] starts over. Cancellation is not a
+     * failure. The failure is still reported to `onError`, or as described in
+     * [onReactionError].
+     */
+    val error: ReadableObservable<Throwable?> get() = errorAtom
 
     /**
      * The current value — `initial` until the computation pushes. Reading starts
@@ -158,6 +176,7 @@ sealed class LazyObservable<T>(
         action {
             atom.value = initial
             pendingAtom.value = false
+            errorAtom.value = null
         }
     }
 
@@ -207,8 +226,18 @@ sealed class LazyObservable<T>(
         pendingAtom.value = false
     }
 
-    /** Reports a failure of the computation — [onError], or the log. */
-    protected fun fail(error: Throwable) {
+    /**
+     * Reports a failure of the run of generation [gen] — to [onError], or as
+     * [reportUncaught] does — and, unless that run was superseded, exposes it as
+     * [error], ending [pending] in the same batch.
+     */
+    protected fun fail(gen: Long, error: Throwable) {
+        if (!disposed && gen == generation) {
+            action {
+                errorAtom.value = error
+                pendingAtom.value = false
+            }
+        }
         reportUncaught(this, error, onError)
     }
 
@@ -221,7 +250,10 @@ sealed class LazyObservable<T>(
     private fun startRun() {
         cancelRun()
         val gen = ++generation
-        pendingAtom.value = true
+        action {
+            pendingAtom.value = true
+            errorAtom.value = null
+        }
         // Untracked: the body's own reads belong to the body, not to whoever
         // happened to read this observable first.
         untracked { run(gen) }
@@ -245,8 +277,7 @@ private class DirectLazyObservable<T>(
             compute(Sink { value -> emit(gen, value) })
         } catch (error: Throwable) {
             // The run is over, so it will never push: stop pending before reporting.
-            settle(gen)
-            fail(error)
+            fail(gen, error)
         }
     }
 }
@@ -274,7 +305,7 @@ private class CoroutineLazyObservable<T>(
             } catch (e: CancellationException) {
                 throw e  // always re-throw so coroutine machinery can clean up
             } catch (e: Throwable) {
-                withContext(NonCancellable + mainContext) { fail(e) }
+                withContext(NonCancellable + mainContext) { fail(gen, e) }
             } finally {
                 // NonCancellable so the flag settles even when cancelled mid-suspend,
                 // mainContext so the mutation happens on the UI thread.

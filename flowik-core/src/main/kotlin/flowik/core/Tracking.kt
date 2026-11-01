@@ -92,7 +92,7 @@ object Tracking {
         if (isBatching) {
             pendingReactions.get().add(reaction)
         } else {
-            reaction.run()
+            reaction.invalidated()
         }
     }
 
@@ -180,7 +180,7 @@ object Tracking {
         // Copy and clear to allow re-entrant scheduling
         val snapshot = pending.toList()
         pending.clear()
-        snapshot.forEach { it.run() }
+        snapshot.forEach { it.invalidated() }
 
         val pendingAuto = pendingAutoRuns.get()
         val autoSnapshot = pendingAuto.toList()

@@ -108,3 +108,55 @@ fun flowAction(
     mainContext: CoroutineContext = Dispatchers.Main,
     block: suspend () -> Unit,
 ): FlowAction = FlowAction(context, mainContext, block)
+
+/**
+ * Suspends until [check] becomes `true` — the coroutine form of [whenThen], and
+ * MobX's `await when(predicate, { timeout })`.
+ *
+ * [check] is evaluated reactively, like a [whenThen] predicate: once right away
+ * — returning at once if it already holds — and again whenever an observable it
+ * read changes.
+ *
+ * ```kotlin
+ * val loadAndOpen = flowAction {
+ *     store.load()
+ *     if (awaitUntil(timeout = 5.seconds) { store.isReady }) openEditor()
+ *     else runInAction { store.error = "Timed out" }
+ * }
+ * ```
+ *
+ * Call it from the thread that owns the observables, as every other Flowik
+ * reaction — on Swing, a coroutine on [Dispatchers.Main]; on Vaadin, one on
+ * the UI's dispatcher.
+ *
+ * Cancelling the calling coroutine, or reaching [timeout], disposes the
+ * underlying reaction, so nothing is left observing [check].
+ *
+ * @param timeout how long to wait; [kotlin.time.Duration.INFINITE] waits for as long as it takes
+ * @return `true` once [check] held, `false` if [timeout] elapsed first
+ * @throws Throwable whatever [check] throws: the wait ends with it
+ */
+suspend fun awaitUntil(
+    name: String? = null,
+    timeout: kotlin.time.Duration = kotlin.time.Duration.INFINITE,
+    check: () -> Boolean,
+): Boolean {
+    val satisfied = CompletableDeferred<Unit>()
+    val reaction = whenThen(
+        name = name ?: "awaitUntil",
+        check = check,
+        onError = { satisfied.completeExceptionally(it) },
+    ) { satisfied.complete(Unit) }
+
+    // Disposed here rather than in a cancellation handler, so it happens on the
+    // caller's thread — the one that owns the observables — however the wait ends.
+    try {
+        if (timeout.isInfinite()) {
+            satisfied.await()
+            return true
+        }
+        return withTimeoutOrNull(timeout) { satisfied.await() } != null
+    } finally {
+        reaction.dispose()
+    }
+}

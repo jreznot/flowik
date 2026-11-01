@@ -6,6 +6,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
 import kotlin.reflect.KProperty0
 import kotlin.reflect.jvm.isAccessible
 
@@ -31,7 +33,7 @@ fun observable(initial: Instant, name: String? = null): ObservableValue<Instant>
 fun observable(initial: Duration, name: String? = null): ObservableValue<Duration> = ObservableValue(initial, name)
 
 // Any type not matched by the overloads above (data classes, domain objects, etc.)
-// is wrapped in an ObservableMap, exposing each property as an individual ObservableValue.
+// is wrapped in an ObservableEntity, exposing each property as an individual ObservableValue.
 
 /**
  * Wrap an arbitrary [T] instance, exposing each property as an [ObservableValue].
@@ -77,6 +79,22 @@ fun <T> observableRef(initial: T, name: String? = null): MutableObservable<T> =
 fun <T> observableStruct(initial: T, name: String? = null): MutableObservable<T> =
     PolicyObservable(initial, name, Comparer.Structural)
 
+/**
+ * An atom holding [initial] as an opaque value, whose change detection is
+ * [equals] — MobX's `observable.box(value, { equals })`.
+ *
+ * The general form of [observableRef] and [observableStruct]: a write that
+ * [equals] reports as equal to the current value is dropped and notifies
+ * nobody.
+ *
+ * ```kotlin
+ * val price = observable(BigDecimal("1.0"), Comparer { a, b -> a.compareTo(b) == 0 })
+ * price.value = BigDecimal("1.00")   // same amount — nobody is notified
+ * ```
+ */
+fun <T> observable(initial: T, equals: Comparer<T>, name: String? = null): MutableObservable<T> =
+    PolicyObservable(initial, name, equals)
+
 /** Create an [ObservableEntityList] pre-populated with [items]. */
 fun <T : Any> observables(vararg items: T): ObservableEntityList<T> =
     ObservableEntityList(items.toList())
@@ -93,6 +111,14 @@ fun <T : Any> observablesShallow(vararg items: T): ObservableList<T> =
  */
 fun <T> observableSet(vararg items: T): ObservableSet<T> =
     ObservableSet(items.toList())
+
+/**
+ * Create an [ObservableMap] pre-populated with [entries] — MobX's `observable.map`.
+ *
+ * To start from an existing map, use the constructor: `ObservableMap(byId)`.
+ */
+fun <K, V> observableMap(vararg entries: Pair<K, V>): ObservableMap<K, V> =
+    ObservableMap(linkedMapOf(*entries))
 
 /** Create a computed (derived) value with auto-tracking. */
 fun <T> computed(compute: () -> T): Computed<T> = Computed(compute)
@@ -129,6 +155,20 @@ fun <T> computedRef(compute: () -> T): DisposableObservable<T> =
     PolicyComputed(compute, Comparer.Identity)
 
 /**
+ * A derived value that notifies dependents only when its result changes
+ * according to [equals] — MobX's `computed(fn, { equals })`.
+ *
+ * The general form of [computedStruct] and [computedRef], and shares their
+ * eagerness and disposal semantics:
+ *
+ * ```kotlin
+ * val rounded = computed(Comparer<Double> { a, b -> abs(a - b) < 0.01 }) { sensor.value }
+ * ```
+ */
+fun <T> computed(equals: Comparer<T>, compute: () -> T): DisposableObservable<T> =
+    PolicyComputed(compute, equals)
+
+/**
  * Reads observables inside [block] without registering dependencies.
  *
  * Useful inside a reaction that must consult a value it should *not* re-run for.
@@ -140,19 +180,28 @@ fun <R> untracked(block: () -> R): R = Tracking.untracked(block)
  * can be disposed later (e.g., when a component is removed from the hierarchy).
  *
  * [supply] is tracked — observables read inside it become dependencies.
- * [effect] runs (receiving the current data value) whenever the tracked data
- * changes. Does NOT fire on creation.
+ * [effect] runs (receiving the current data value) whenever the supplied value
+ * changes according to [equals] — `equals` by default, so a dependency change
+ * that leaves the value as it was does not run it. Does NOT fire on creation,
+ * unless [fireImmediately] is set.
+ *
+ * With a positive [delay], changes are coalesced and the reaction runs at most
+ * once per [delay], on [mainContext] — see [Reaction].
  *
  * [onError] receives any exception thrown by [supply] or [effect]. Without it
- * such an exception is logged and dropped — see [Reaction].
+ * such an exception is reported as described in [onReactionError].
  */
 fun <T> reaction(
     name: String? = null,
     supply: () -> T,
     onError: ((Throwable) -> Unit)? = null,
+    fireImmediately: Boolean = false,
+    equals: Comparer<T> = Comparer.Default,
+    delay: kotlin.time.Duration = kotlin.time.Duration.ZERO,
+    mainContext: CoroutineContext = Dispatchers.Main,
     effect: (T) -> Unit
 ): Disposable {
-    val r = Reaction(name, supply, onError, effect)
+    val r = Reaction(name, supply, onError, fireImmediately, equals, delay, mainContext, effect)
     r.run()
     return r
 }

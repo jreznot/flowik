@@ -51,6 +51,15 @@ fun <T> JPanel.items(list: ObservableList<T>, map: (T) -> JComponent) {
                 revalidate()
                 repaint()
             }
+            is ListChange.Move -> {
+                // The row moves as it is — no rebuild, so whatever state it holds survives.
+                val comp = children.removeAt(change.from)
+                children.add(change.to, comp)
+                remove(comp)
+                add(comp, change.to)
+                revalidate()
+                repaint()
+            }
             is ListChange.Clear -> {
                 children.forEach { disposeIfOwned(it) }
                 children.clear()

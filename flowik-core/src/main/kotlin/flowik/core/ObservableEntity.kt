@@ -232,7 +232,7 @@ class ObservableEntity<T : Any>(private val initial: T) : Observable {
 
     override fun hashCode(): Int = initial.hashCode()
 
-    override fun toString(): String = "ObservableMap($initial)"
+    override fun toString(): String = "ObservableEntity($initial)"
 
     /**
      * Returns the container for [name], creating it on first access. A second
@@ -342,8 +342,8 @@ class ObservableEntity<T : Any>(private val initial: T) : Observable {
     private enum class Access(private val container: String, private val accessor: String) {
         VALUE("a scalar ObservableValue", "get"),
         LIST("a shallow ObservableList", "list"),
-        NESTED("a nested ObservableMap", "nested"),
-        NESTED_LIST("a deep ObservableMapList", "nestedList");
+        NESTED("a nested ObservableEntity", "nested"),
+        NESTED_LIST("a deep ObservableEntityList", "nestedList");
 
         fun hint(property: String): String = "$container ($accessor(\"$property\"))"
     }

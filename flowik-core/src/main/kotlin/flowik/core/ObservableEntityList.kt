@@ -9,10 +9,10 @@ package flowik.core
  * ```kotlin
  * data class TodoItem(val text: String, val done: Boolean = false)
  *
- * val todos = ObservableMapList<TodoItem>()
+ * val todos = ObservableEntityList<TodoItem>()
  * todos.add(TodoItem("Buy milk"))          // plain value, auto-wrapped
  *
- * val item: ObservableMap<TodoItem> = todos[0]
+ * val item: ObservableEntity<TodoItem> = todos[0]
  * item[TodoItem::done] = true              // fine-grained reactive update
  * ```
  *
@@ -40,6 +40,7 @@ class ObservableEntityList<T : Any>(initial: List<T> = emptyList()) : Observable
                     unwatch(change.old)
                     watch(change.new)
                 }
+                is ListChange.Move -> Unit // still in the list, still watched
                 is ListChange.Clear -> change.old.forEach { unwatch(it) }
             }
         }
@@ -57,6 +58,14 @@ class ObservableEntityList<T : Any>(initial: List<T> = emptyList()) : Observable
     @JvmName("addItemAt")
     fun add(index: Int, item: T): ObservableEntity<T> = ObservableEntity(item).also { super.add(index, it) }
 
+    /** Wraps each of [items] in an [ObservableEntity] and appends them in one batch. */
+    @JvmName("addAllItems")
+    fun addAll(items: Collection<T>): Boolean = super.addAll(items.map { ObservableEntity(it) })
+
+    /** Wraps each of [items] in an [ObservableEntity] and inserts them at [index] in one batch. */
+    @JvmName("addAllItemsAt")
+    fun addAll(index: Int, items: Collection<T>): Boolean = super.addAll(index, items.map { ObservableEntity(it) })
+
     /**
      * Removes the first wrapper whose initial value equals [item].
      *
@@ -66,6 +75,13 @@ class ObservableEntityList<T : Any>(initial: List<T> = emptyList()) : Observable
     @JvmName("removeItem")
     fun remove(item: T): Boolean = super.remove(ObservableEntity(item))
 
+    /**
+     * Replaces the contents with fresh wrappers of [items].
+     *
+     * Unlike [ObservableList.setAll], this does not diff: a wrapper compares by
+     * the value it was created with, not by its current state, so an existing
+     * wrapper equal to an item may since have been edited into something else.
+     */
     @JvmName("setAllItems")
     fun setAll(items: List<T>) = action {
         clear()

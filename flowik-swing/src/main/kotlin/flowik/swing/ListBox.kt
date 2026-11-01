@@ -27,6 +27,10 @@ private class ReactiveListModel<T>(
                     snapshot = data.items
                     fireContentsChanged(this, change.index, change.index)
                 }
+                is ListChange.Move -> {
+                    snapshot = data.items
+                    fireContentsChanged(this, minOf(change.from, change.to), maxOf(change.from, change.to))
+                }
                 is ListChange.Clear -> {
                     val oldSize = snapshot.size
                     snapshot = emptyList()

@@ -95,6 +95,27 @@ class BindingsTest {
     }
 
     @Test
+    fun `items moves rows on move and sort, keeping them alive`() {
+        val text = observable("row")
+        val items = ObservableList(listOf("c", "a", "b"))
+        val rows = mutableMapOf<String, Row>()
+        val list = VerticalLayout()
+        context(Bindings()) {
+            list.items(items) { item -> Row(text).also { rows[item] = it } }
+        }
+
+        items.sortBy { it }
+        assertEquals(listOf(rows["a"], rows["b"], rows["c"]), list.children.toList())
+
+        items.move(2, 0)
+        assertEquals(listOf(rows["c"], rows["a"], rows["b"]), list.children.toList())
+        assertEquals(3, rows.size, "no row was rebuilt")
+
+        action { text.value = "still bound" }
+        assertEquals("still bound", rows.getValue("c").caption.text)
+    }
+
+    @Test
     fun `childSwitch swaps the child and disposes the one it drops`() {
         val selected = observable("a")
         val caption = observable("first")

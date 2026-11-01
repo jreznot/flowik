@@ -100,4 +100,25 @@ class BindingsPanelTest {
         assertEquals("visible", caption.label.text)
         assertTrue(container.componentCount == 0)
     }
+
+    @Test
+    fun `ForEach moves rows on move and sort, keeping them alive`() {
+        val text = observable("row")
+        val items = flowik.core.ObservableList(listOf("c", "a", "b"))
+        val captions = mutableMapOf<String, Caption>()
+        val container = JPanel()
+        context(Bindings()) {
+            container.items(items) { item -> Caption(text).also { captions[item] = it } }
+        }
+
+        items.sortBy { it }
+        assertEquals(listOf("a", "b", "c").map { captions[it] }, container.components.toList())
+
+        items.move(2, 0)
+        assertEquals(listOf("c", "a", "b").map { captions[it] }, container.components.toList())
+        assertEquals(3, captions.size, "no row was rebuilt")
+
+        action { text.value = "still bound" }
+        assertEquals("still bound", captions.getValue("c").label.text)
+    }
 }

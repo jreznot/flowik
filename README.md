@@ -272,12 +272,13 @@ val name    = observable("Alice")              // ObservableValue<String>
 val person  = observable(Person("Bob", 30))    // ObservableEntity<Person> — each property reactive
 val items   = observables<TodoItem>()          // ObservableEntityList<TodoItem>
 val roles   = observableSet("admin")           // ObservableSet<String>
+val drafts  = observableMap(42L to "Hi")       // ObservableMap<Long, String>
 
 val greeting = computed { "Hello, ${name.value}" }
 val report   = lazyObservable(emptyList<Row>()) { sink -> load { sink(it) } }  // runs on first read
 
 autoRun { println(greeting.value) }            // re-runs whenever greeting changes
-reaction(supply = { name.value }, effect = { newName -> println("name -> $newName") })
+reaction(supply = { name.value }, effect = { newName -> println("name -> $newName") })  // on change only
 whenThen(check = { items.size > 10 }, effect = { println("Over the limit!") })
 
 action {                                       // batch — derivations fire once at the end
@@ -381,6 +382,50 @@ variant, since hashing would key each element on its initial snapshot). For a ke
 collection use `observables(...)`. Fine-grained `SetChange.Add` / `Remove` / `Clear` events are
 available through `onChange { }`, mirroring `ObservableList`.
 
+### Lists: `addAll`, `move`, `sort`, `setAll`
+
+`ObservableList` emits one `ListChange` per edit, and the bulk operations are built to keep that
+stream small, so a container bound with `items(list)` touches only the rows that changed:
+
+```kotlin
+val tasks = ObservableList(listOf("write", "test", "ship"))
+
+tasks.addAll(1, listOf("review", "fix"))   // one Insert each, reactions run once
+tasks.move(0, 2)                           // one ListChange.Move — the row moves, it is not rebuilt
+tasks.sortBy { it.length }                 // stable, in place, through Moves
+tasks.setAll(fetched)                      // diffed against the current contents
+```
+
+`setAll` (MobX's `replace`) diffs the new contents against the current ones: items equal to one already
+there stay put — instance and row included — and only the rest are inserted, removed, or updated in
+place. Bound rows keep their state, a `JList` keeps its selection, and replacing a list with equal
+contents notifies nobody. `ObservableEntityList.setAll(values)` is the exception: it wraps every value
+afresh, because an existing wrapper may have been edited since it was created.
+
+`ListChange.Move(from, to, item)` is new in this release: a `when` over `ListChange` needs a branch for
+it. The Swing and Vaadin `items(list)` bindings move the existing component.
+
+### Maps: `observableMap`
+
+The equivalent of MobX's `observable.map` — entries with dynamic keys, for lookup tables, caches and
+selections keyed by id. As in MobX, a lookup tracks *its own key*:
+
+```kotlin
+val drafts = observableMap<Long, String>()
+
+autoRun { println("draft of 42: ${drafts[42L]}") }   // re-runs for key 42 only
+autoRun { println("${drafts.size} draft(s)") }       // re-runs on any change
+
+drafts[42L] = "Hello"      // both run
+drafts[7L] = "Other"       // only the second one runs
+drafts[42L] = "Hello"      // equal value — nobody is notified
+```
+
+`get` and `containsKey` track one key; `items`, `size`, `keys`, `values` and iteration track the whole
+map. `putAll`, `setAll` (MobX's `replace`) and `clear` batch, `onChange { }` delivers
+`MapChange.Add` / `Update` / `Remove` / `Clear`, and `var drafts: MutableMap<Long, String> by
+observableMap()` hands out a plain `MutableMap` view that tracks and writes through the same way.
+
 ### Change detection: `ref` and `struct`
 
 `observable(...)` decomposes an arbitrary object into one atom per property, and `ObservableValue`
@@ -398,7 +443,7 @@ class Store {
     var matrix: Array<IntArray> by observableStruct(emptyArray())
 
     // Or bring your own policy.
-    val temperature = observableWith(20.0) { a, b -> abs(a - b) < 0.5 }
+    val temperature = observable(20.0, Comparer { a, b -> abs(a - b) < 0.5 })
 }
 ```
 
@@ -411,6 +456,7 @@ only on an actual change:
 
 ```kotlin
 val isOverLimit = computedStruct { items.size > 10 }   // fires on false <-> true, not on every add
+val reading     = computed(Comparer<Double> { a, b -> abs(a - b) < 0.1 }) { sensor.value }  // custom policy
 ```
 
 Deciding whether the result changed means evaluating it, so these derivations are eager: they
@@ -418,6 +464,47 @@ re-evaluate when an upstream observable changes, or once at the end of the enclo
 
 Finally, `untracked { }` reads observables without subscribing to them — useful inside a reaction that
 must consult a value it should not re-run for.
+
+### Reactions: options, `awaitUntil`, `now()`
+
+`reaction` follows MobX: the effect runs when the *supplied value changes*, not every time a dependency
+does. The options are MobX's too:
+
+```kotlin
+reaction(supply = { count.value > 5 }) { over -> warn(over) }       // only on false <-> true
+
+reaction(
+    supply = { store.query.value },
+    fireImmediately = true,                                         // also run on creation
+    equals = Comparer { a, b -> a.trim() == b.trim() },             // what counts as a change
+    delay = 300.milliseconds,                                       // coalesce typing, run on mainContext
+) { query -> runSearch(query) }
+```
+
+Before this release the effect ran on every invalidation. To keep that for a reaction that relied on
+it — one whose `supply` returns the same mutable object every time, for instance — pass
+`equals = Comparer { _, _ -> false }`.
+
+`awaitUntil` is the coroutine form of `whenThen` — MobX's `await when(…)`. It suspends until the
+predicate holds, returns `false` if a `timeout` elapses first, and releases the predicate however the
+wait ends:
+
+```kotlin
+val openWhenReady = flowAction {
+    if (awaitUntil(timeout = 5.seconds) { store.isReady }) openEditor() else showTimeout()
+}
+```
+
+`now(interval)` is the current time as an observable, after mobx-utils: a reaction or computed that
+reads it re-runs every `interval`. The timer runs only while something observes it, and readers of the
+same interval share one:
+
+```kotlin
+Label { "edited ${Duration.between(note.edited, now(1.minutes)).toMinutes()} min ago" }
+```
+
+Ticks are written on `mainContext` — `Dispatchers.Main`, the EDT, by default; on Vaadin pass
+`ui.asCoroutineDispatcher()`, as you would for `delay`.
 
 ### Editing as a transaction: `createViewModel`
 
@@ -515,6 +602,7 @@ Button("Reload") { store.planets.refresh() }
 | `current()` / `value` | starts the computation, returns `initial` until the first push, auto-tracks   |
 | `subscribe { }`       | does *not* start it — laziness is read-driven                                 |
 | `pending`             | observable flag: set while a started computation has not pushed yet           |
+| `error`               | observable: what the computation failed with, cleared by `refresh` / `reset`  |
 | `refresh()`           | re-invokes it, cancelling a run in flight; does nothing before the first read |
 | `reset()`             | back to `initial` and unstarted — the next read recomputes                    |
 | `dispose()`           | cancels, ignores later pushes, freezes the value; registers with `Bindings`   |
@@ -541,8 +629,13 @@ val ticks = clockFlow.toLazyObservable(0, scope)
 
 Observables read inside the computation are *not* dependencies of whoever read the lazy observable —
 the body runs untracked, so a fetch that reads `query.value` re-runs only when you `refresh` it.
-Anything the body throws goes to `onError`, or to the log when no handler was given, exactly as for
-the reactions below.
+Anything the body throws shows up in `error` — the rejected state of mobx-utils' `fromPromise` — and
+also goes to `onError`, or to the global handler or the log when no handler was given, exactly as for
+the reactions below:
+
+```kotlin
+Label { store.planets.error.value?.let { "Failed: ${it.message}" } ?: store.summary }
+```
 
 ### A computed per key: `computedFn`
 
@@ -623,6 +716,14 @@ whenThen(check = { store.ready.value }, onError = { showFatal(it) }) { start() }
 The handler sees exceptions from both parts of a reaction — the tracked expression and the effect.
 A `CancellationException` is the one exception that is always re-thrown, so coroutine cancellation is
 never swallowed.
+
+For an application-wide policy, install a global handler — MobX's `onReactionError`. It receives every
+exception a reaction, observation hook or lazy observable without an `onError` of its own fails with,
+together with the source that threw it, and replaces the logging while installed:
+
+```kotlin
+val uninstall = onReactionError { error, source -> crashReporter.report(error, "$source") }
+```
 
 Logging goes through SLF4J, under the `flowik.core` category. `flowik-core` depends on the SLF4J API
 only — the application picks the binding (logback, `slf4j-simple`, …); with no binding on the

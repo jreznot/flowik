@@ -1,5 +1,9 @@
 package flowik.core
 
+import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration
+
 /**
  * A resource that can be disposed to release its subscriptions and
  * prevent further execution.
@@ -59,9 +63,13 @@ interface Bindings : Disposable {
         name: String? = null,
         supply: () -> T,
         onError: ((Throwable) -> Unit)? = null,
+        fireImmediately: Boolean = false,
+        equals: Comparer<T> = Comparer.Default,
+        delay: Duration = Duration.ZERO,
+        mainContext: CoroutineContext = Dispatchers.Main,
         effect: (T) -> Unit
     ) {
-        register(flowik.core.reaction(name, supply, onError, effect))
+        register(flowik.core.reaction(name, supply, onError, fireImmediately, equals, delay, mainContext, effect))
     }
 }
 
