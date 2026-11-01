@@ -82,7 +82,7 @@ fun interface SuspendSink<in T> {
  * from there, or use [lazyObservableAsync], which marshals pushes to
  * `mainContext` for you.
  */
-sealed class LazyObservable<T> protected constructor(
+sealed class LazyObservable<T>(
     private val initial: T,
     private val name: String?,
     private val onError: ((Throwable) -> Unit)?,
