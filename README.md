@@ -1039,9 +1039,10 @@ Real, runnable demos live in the repo:
 - [`flowik-vaadin-demo`](flowik-vaadin-demo) — the same Todo app on Vaadin Flow with property
   delegates and two-way input bindings, a master/detail Employees page, and an
   [Obsidian-like note editor](flowik-vaadin-demo/src/main/kotlin/demo/vaadin/obsidian) ported from
-  the Swing demo: sliding sidebars, animated tabs and keyboard shortcuts, and an
-  [Anki-style flashcard app](flowik-vaadin-demo/src/main/kotlin/demo/vaadin/anki) whose study queues
-  are derived from the cards, the review log and the clock.
+  the Swing demo: sliding sidebars, animated tabs and keyboard shortcuts.
+- [`flowik-vaadin-anki`](flowik-vaadin-anki) — an Anki-style flashcard app on Vaadin Flow whose
+  study queues are derived from the cards, the review log and the clock, over blocking backend
+  services that load each deck's cards only when they are needed.
 - [`flowik-intellij-demo`](flowik-intellij-demo) — an IDE plugin with a tool window built from the
   Kotlin UI DSL: live two-way bindings, a computed label, and a conditionally visible row
 
