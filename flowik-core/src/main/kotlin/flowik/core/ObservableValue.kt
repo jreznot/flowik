@@ -10,7 +10,8 @@ import kotlin.reflect.KProperty
  * whether anything changed. For identity or deep structural change detection
  * use [observableRef] / [observableStruct] instead.
  */
-class ObservableValue<T>(initial: T, private val name: String? = null) : MutableObservable<T>, Dependency {
+class ObservableValue<T>(initial: T, private val name: String? = null) :
+    MutableObservable<T>, Dependency, ObservationHooks, PendingUnobservation {
 
     private var _value: T = initial
 
@@ -41,13 +42,29 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : Mutable
         this.value = value
     }
 
+    /** Created by the first hook listener; see [ObservationHooks]. */
+    private var hooks: ObservationListeners? = null
+
     override fun addObserver(tracker: Tracker) {
-        observers.add(tracker)
+        if (observers.add(tracker) && observers.size == 1) hooks?.becameObserved()
     }
 
     override fun removeObserver(tracker: Tracker) {
-        observers.remove(tracker)
+        if (observers.remove(tracker) && observers.isEmpty() && hooks != null) {
+            Tracking.scheduleUnobservation(this)
+        }
     }
+
+    override fun processUnobservation() {
+        if (observers.isEmpty()) hooks?.becameUnobserved()
+    }
+
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = hooks().addObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = hooks().addUnobserved(listener)
+
+    private fun hooks(): ObservationListeners =
+        hooks ?: ObservationListeners(this, initiallyObserved = observers.isNotEmpty()).also { hooks = it }
 
     /** How many trackers depend on this atom — for tests of the tracking lifecycle. */
     internal val observerCount: Int get() = observers.size

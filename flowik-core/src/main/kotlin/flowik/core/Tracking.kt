@@ -28,14 +28,16 @@ object Tracking {
     private val pendingRefreshes = ThreadLocal.withInitial { linkedSetOf<PolicyComputed<*>>() }
 
     /**
-     * Computeds that lost their last observer during a batch or a flush. They
-     * are suspended once it ends, unless something observes them again by then —
-     * typically a component rebuilt in the same flush that reads them again.
+     * Atoms and computeds that lost their last observer during a batch, a flush
+     * or a tracker run. They are processed — a computed suspends, unobserved
+     * hooks fire — once it is over, unless something observes them again by
+     * then: a reaction re-reading what it read last time, a component rebuilt
+     * in the same flush.
      */
-    private val pendingSuspensions = ThreadLocal.withInitial { linkedSetOf<Computed<*>>() }
+    private val pendingUnobservations = ThreadLocal.withInitial { linkedSetOf<PendingUnobservation>() }
 
-    /** Depth of reaction flushes in progress; suspensions wait for them too. */
-    private val flushDepth = ThreadLocal.withInitial { 0 }
+    /** Depth of reaction flushes and tracker runs in progress; unobservations wait for them too. */
+    private val deferDepth = ThreadLocal.withInitial { 0 }
 
     /** Guards against a non-converging derived graph in [flushRefreshes]. */
     private const val MAX_REFRESH_ROUNDS = 100
@@ -80,13 +82,7 @@ object Tracking {
             batchDepth.set(depth)
         }
         if (depth == 0) {
-            flushDepth.set(flushDepth.get() + 1)
-            try {
-                flushPending()
-            } finally {
-                flushDepth.set(flushDepth.get() - 1)
-            }
-            flushSuspensions()
+            deferringUnobservations { flushPending() }
         }
     }
 
@@ -117,24 +113,40 @@ object Tracking {
     }
 
     /**
-     * Suspends [computed], which has just lost its last observer — at once, or
-     * at the end of the batch or flush in progress.
+     * Acts on [target] having lost its last observer — at once, or at the end of
+     * the batch, flush or tracker run in progress.
      */
-    internal fun suspendWhenIdle(computed: Computed<*>) {
-        if (isBatching || flushDepth.get() > 0) {
-            pendingSuspensions.get().add(computed)
+    internal fun scheduleUnobservation(target: PendingUnobservation) {
+        if (isBatching || deferDepth.get() > 0) {
+            pendingUnobservations.get().add(target)
         } else {
-            computed.suspendIfUnobserved()
+            target.processUnobservation()
         }
     }
 
-    private fun flushSuspensions() {
-        if (flushDepth.get() > 0) return
-        val pending = pendingSuspensions.get()
+    /**
+     * Runs [block] with unobservations held back, and processes them once the
+     * outermost such block — and any batch around it — is over. A tracker run
+     * goes through here, so the atoms it releases and reads again do not look
+     * unobserved in between.
+     */
+    internal fun <R> deferringUnobservations(block: () -> R): R {
+        deferDepth.set(deferDepth.get() + 1)
+        try {
+            return block()
+        } finally {
+            val depth = deferDepth.get() - 1
+            deferDepth.set(depth)
+            if (depth == 0 && !isBatching) flushUnobservations()
+        }
+    }
+
+    private fun flushUnobservations() {
+        val pending = pendingUnobservations.get()
         while (pending.isNotEmpty()) {
             val snapshot = pending.toList()
             pending.clear()
-            snapshot.forEach { it.suspendIfUnobserved() }
+            snapshot.forEach { it.processUnobservation() }
         }
     }
 

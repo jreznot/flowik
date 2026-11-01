@@ -28,12 +28,17 @@ import kotlin.reflect.KProperty
 internal class PolicyComputed<T>(
     compute: () -> T,
     private val comparer: Comparer<T>,
-) : DisposableObservable<T> {
+) : DisposableObservable<T>, ObservationHooks {
 
     private val inner = Computed(compute)
 
     /** The tracking atom — dependents observe this, never [inner]. */
     private val version = ObservableValue(0L, name = "policy-computed-version")
+
+    // Dependents observe the version atom, so it is the one to ask.
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = version.onBecomeObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = version.onBecomeUnobserved(listener)
 
     private var revision = 0L
 

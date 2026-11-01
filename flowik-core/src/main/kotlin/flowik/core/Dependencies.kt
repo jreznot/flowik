@@ -33,15 +33,19 @@ internal class DependencySet(private val owner: Tracker) {
 
     private var current: MutableSet<Dependency> = linkedSetOf()
 
-    /** Runs [block] as [owner], replacing the previous run's dependencies with the ones it reads. */
-    fun <R> track(block: () -> R): R {
+    /**
+     * Runs [block] as [owner], replacing the previous run's dependencies with the
+     * ones it reads. What it releases and reads again in the same run is not
+     * reported as unobserved.
+     */
+    fun <R> track(block: () -> R): R = Tracking.deferringUnobservations {
         val previous = current
         previous.forEach { if (it is ObservableValue<*>) it.removeObserver(owner) }
         current = linkedSetOf()
 
         Tracking.push(owner)
         try {
-            return block()
+            block()
         } finally {
             Tracking.pop()
             // Compared with whatever is current *now*: a re-entrant run of the

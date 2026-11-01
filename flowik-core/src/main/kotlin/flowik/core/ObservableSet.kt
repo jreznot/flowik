@@ -48,10 +48,15 @@ import kotlin.reflect.KProperty
  * [action] batching.
  */
 class ObservableSet<T>(initial: Collection<T> = emptySet()) :
-    Iterable<T>, MutableObservable<MutableSet<T>>, ReadWriteProperty<Any?, MutableSet<T>> {
+    Iterable<T>, MutableObservable<MutableSet<T>>, ReadWriteProperty<Any?, MutableSet<T>>, ObservationHooks {
 
     /** Internal version counter — observing this is how reactions track "the set changed". */
     private val version = ObservableValue(0L, name = "set-version")
+
+    // Readers observe the version counter, so it is the one to ask.
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = version.onBecomeObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = version.onBecomeUnobserved(listener)
 
     private val backing = LinkedHashSet<T>().apply { addAll(initial) }
 

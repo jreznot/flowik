@@ -86,10 +86,15 @@ sealed class LazyObservable<T> protected constructor(
     private val initial: T,
     private val name: String?,
     private val onError: ((Throwable) -> Unit)?,
-) : ReadableObservable<T>, Disposable {
+) : ReadableObservable<T>, Disposable, ObservationHooks {
 
     /** The atom dependents observe. Holds `initial` until the first push. */
     private val atom = ObservableValue(initial, name)
+
+    // Dependents observe the atom, so it is the one to ask.
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = atom.onBecomeObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = atom.onBecomeUnobserved(listener)
 
     private val pendingAtom = ObservableValue(false, name?.let { "$it-pending" })
 

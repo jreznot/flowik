@@ -544,6 +544,54 @@ the body runs untracked, so a fetch that reads `query.value` re-runs only when y
 Anything the body throws goes to `onError`, or to the log when no handler was given, exactly as for
 the reactions below.
 
+### A computed per key: `computedFn`
+
+A `computed` caches one value. When the value depends on an argument — a deck, an id — you want one
+cached computation *per argument*, so that a change to one deck recomputes that deck only. That is
+`computedFn`, after the mobx-utils function of the same name:
+
+```kotlin
+class Store {
+    val queueOf = computedFn { deck: ObservableEntity<Deck> -> buildQueue(deck) }
+}
+
+Span().apply { text { "${store.queueOf(deck).size} due" } }   // cached per deck
+```
+
+Called inside a reaction or a `computed`, each key gets a `Computed` of its own, shared by every
+reader of that key. An entry lives only while something reads it: once its last reader is disposed it
+is dropped, together with everything it read, so a `computedFn` over a long-lived store does not pile
+up entries for keys nobody shows any more. Called outside any reaction, an unknown key is simply
+evaluated and nothing is cached — the same rule as for an unobserved `computed`.
+
+`computedFn(equals = Comparer.Structural) { … }` gives each entry `computedStruct` semantics: its
+readers are notified only when that key's result actually changes. That is the tool for keeping a
+shared input — a list every key filters, a log every key counts — from recomputing every key.
+`keepAlive = true` keeps entries cached until you `dispose()` the function; there is also a
+two-argument form, `computedFn { a: A, b: B -> … }`.
+
+### Observed and unobserved
+
+Atoms, computeds, observable lists and sets — and the wrappers built on them — can say when they
+start and stop being read, as MobX's `onBecomeObserved` / `onBecomeUnobserved`:
+
+```kotlin
+val now = observable(Instant.now())
+var timer: Timer? = null
+now.onBecomeObserved { timer = startTicking { now.value = Instant.now() } }
+now.onBecomeUnobserved { timer?.cancel() }
+```
+
+*Observed* means read by at least one reaction or computed. Losing the last reader only counts once
+the current action, flush of reactions or reaction run is over, so a value that is dropped and read
+again in the same pass — a reaction re-running, a screen rebuilt in the same flush — fires neither
+hook. Listeners run untracked. The free functions `onBecomeObserved(observable) { }` and
+`onBecomeUnobserved(observable) { }` accept anything observable, including what `observableRef` and
+`computedStruct` return.
+
+This is the same lifecycle that lets a `computed` suspend when nobody reads it — it disconnects from
+its sources and drops its cache — and that `computedFn` uses to drop entries.
+
 ### Errors in reactions
 
 As in MobX, an exception thrown inside a reaction is *logged, but not re-thrown*. Writing an observable

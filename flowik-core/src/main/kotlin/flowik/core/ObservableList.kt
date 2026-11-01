@@ -7,10 +7,16 @@ import kotlin.reflect.KProperty
  * with the auto-tracking system. Any reaction that reads [items], [size],
  * or iterates the list will re-run when the list is mutated.
  */
-open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, MutableObservable<MutableList<T>> {
+open class ObservableList<T>(initial: List<T> = emptyList()) :
+    Iterable<T>, MutableObservable<MutableList<T>>, ObservationHooks {
 
     /** Internal version counter — observing this is how reactions track "the list changed". */
     private val version = ObservableValue(0L, name = "list-version")
+
+    // Readers observe the version counter, so it is the one to ask.
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = version.onBecomeObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = version.onBecomeUnobserved(listener)
 
     private val backing = mutableListOf<T>().apply { addAll(initial) }
 

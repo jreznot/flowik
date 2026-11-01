@@ -35,7 +35,8 @@ import kotlin.reflect.KProperty
  * upstream observable changes, even if this computation yields the same result.
  * Use [computedStruct] / [computedRef] to notify only on an actual change.
  */
-class Computed<T>(private val compute: () -> T) : Tracker, Dependency, ReadableObservable<T> {
+class Computed<T>(private val compute: () -> T) :
+    Tracker, Dependency, ReadableObservable<T>, ObservationHooks, PendingUnobservation {
 
     private var cachedValue: T? = null
     private var isDirty = true
@@ -51,6 +52,9 @@ class Computed<T>(private val compute: () -> T) : Tracker, Dependency, ReadableO
     private val subscribers = mutableListOf<Observer>()
 
     private val isObserved: Boolean get() = observers.isNotEmpty() || subscribers.isNotEmpty()
+
+    /** Created by the first hook listener; see [ObservationHooks]. */
+    private var hooks: ObservationListeners? = null
 
     override val value: T
         get() {
@@ -92,15 +96,19 @@ class Computed<T>(private val compute: () -> T) : Tracker, Dependency, ReadableO
     }
 
     /**
-     * Disconnects from the sources and drops the cached value, unless something
-     * started observing this computed again in the meantime.
+     * Tells the unobserved hooks, then disconnects from the sources — which may
+     * leave them unobserved in turn — and drops the cached value. Nothing
+     * happens if something started observing this computed again in the meantime.
      */
-    internal fun suspendIfUnobserved() {
-        if (isObserved || !isConnected) return
-        isConnected = false
-        isDirty = true
-        cachedValue = null
-        dependencies.clear()
+    override fun processUnobservation() {
+        if (isObserved) return
+        hooks?.becameUnobserved()
+        if (isConnected) {
+            isConnected = false
+            isDirty = true
+            cachedValue = null
+            dependencies.clear()
+        }
     }
 
     override fun addDependency(dependency: Dependency) {
@@ -108,21 +116,31 @@ class Computed<T>(private val compute: () -> T) : Tracker, Dependency, ReadableO
     }
 
     override fun addObserver(tracker: Tracker) {
-        observers.add(tracker)
+        val wasObserved = isObserved
+        if (observers.add(tracker) && !wasObserved) hooks?.becameObserved()
     }
 
     override fun removeObserver(tracker: Tracker) {
-        if (observers.remove(tracker) && !isObserved) Tracking.suspendWhenIdle(this)
+        if (observers.remove(tracker) && !isObserved) Tracking.scheduleUnobservation(this)
     }
+
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = hooks().addObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = hooks().addUnobserved(listener)
+
+    private fun hooks(): ObservationListeners =
+        hooks ?: ObservationListeners(this, initiallyObserved = isObserved).also { hooks = it }
 
     /** How many trackers depend on this computed — for tests of the tracking lifecycle. */
     internal val observerCount: Int get() = observers.size
 
     override fun subscribe(observer: Observer): Disposable {
+        val wasObserved = isObserved
         subscribers.add(observer)
+        if (!wasObserved) hooks?.becameObserved()
         return object : Disposable {
             override fun dispose() {
-                if (subscribers.remove(observer) && !isObserved) Tracking.suspendWhenIdle(this@Computed)
+                if (subscribers.remove(observer) && !isObserved) Tracking.scheduleUnobservation(this@Computed)
             }
         }
     }

@@ -7,6 +7,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /** The page the app is showing — what the view switches its content on. */
 sealed interface Screen {
@@ -22,6 +23,9 @@ sealed interface Screen {
     /** The card browser, for one deck or — with `null` — for all of them. */
     data class Browse(val deck: ObservableEntity<Deck>?) : Screen
 }
+
+/** How many new and review cards of a deck were answered today — what its daily limits subtract. */
+private data class DoneToday(val newCards: Int, val reviews: Int)
 
 /**
  * What is left to study in a deck today, already in study order and cut to
@@ -60,9 +64,6 @@ class DeckQueue(
         Queue.REVIEW -> reviewCount
     }
 
-    companion object {
-        val EMPTY = DeckQueue(emptyList(), emptyList(), emptyList(), 0, 0, 0, 0, null)
-    }
 }
 
 /**
@@ -75,9 +76,10 @@ class DeckQueue(
  * the card they act on as an argument instead.
  *
  * The queues are *derived*: nothing keeps a list of due cards up to date.
- * [queues] is computed from the cards' schedules, the review log and the clock,
- * so answering a card, undoing it, editing a deck's limits or moving to the
- * next day all re-count every deck on screen with no extra wiring.
+ * [queueOf] is computed per deck from that deck's cards, its answers today, its
+ * limits and the clock, so answering a card, undoing it, editing a deck's limits
+ * or moving to the next day re-count the decks on screen with no extra wiring —
+ * and only the decks the change concerns.
  *
  * Time only moves when [tick] reads the clock, which every navigation and
  * answer does, so a derivation never sees the time change halfway. [skipDay]
@@ -108,16 +110,37 @@ class AnkiStore(
 
     private var lastId = 0L
 
-    val today: LocalDate by computed { localDate(now, zone) }
+    /** Today's date — it notifies when the day changes, not on every tick of [now]. */
+    val today: LocalDate by computedStruct { localDate(now, zone) }
 
-    /** Every deck's queue, keyed by deck id. */
-    val queues: Computed<Map<Long, DeckQueue>> = computed {
+    /**
+     * The clock to the minute, which is what the queues compare learning cards
+     * against: answering a card ticks [now], and that should not recount every
+     * deck as long as the minute stays the same.
+     */
+    private val minute by computedStruct { now.truncatedTo(ChronoUnit.MINUTES) }
+
+    /** A deck's cards — notifies only when cards join or leave that deck, not when one is answered. */
+    private val deckCards = computedFn(equals = Comparer.Structural) { deckId: Long ->
+        cards.items.filter { it.deckId == deckId }
+    }
+
+    /** What a deck already studied today, for its limits — notifies only when its own counts change. */
+    private val doneToday = computedFn(equals = Comparer.Structural) { deckId: Long ->
         val today = today
-        val doneToday = log.items.filter { localDate(it.time, zone) == today }
-        val cardsByDeck = cards.items.groupBy { it.deckId }
-        decks.items.associate { deck ->
-            deck.id to buildQueue(deck, cardsByDeck[deck.id].orEmpty(), doneToday.filter { it.card.deckId == deck.id })
-        }
+        val entries = log.items.filter { it.card.deckId == deckId && localDate(it.time, zone) == today }
+        DoneToday(
+            newCards = entries.count { it.before.state == CardState.NEW },
+            reviews = entries.count { it.before.state == CardState.REVIEW }
+        )
+    }
+
+    /**
+     * Each deck's queue, cached while shown. It reads only that deck's inputs,
+     * so answering a card recomputes the queue of the card's deck and no other.
+     */
+    private val deckQueue = computedFn { deck: ObservableEntity<Deck> ->
+        buildQueue(deck, deckCards(deck.id), doneToday(deck.id))
     }
 
     val studiedToday by computed { log.items.count { localDate(it.time, zone) == today } }
@@ -128,10 +151,9 @@ class AnkiStore(
         seedSampleDecks(this)
     }
 
-    fun queueOf(deck: ObservableEntity<Deck>): DeckQueue = queues.value[deck.id] ?: DeckQueue.EMPTY
+    fun queueOf(deck: ObservableEntity<Deck>): DeckQueue = deckQueue(deck)
 
-    fun cardsOf(deck: ObservableEntity<Deck>): List<ObservableEntity<Card>> =
-        cards.items.filter { it.deckId == deck.id }
+    fun cardsOf(deck: ObservableEntity<Deck>): List<ObservableEntity<Card>> = deckCards(deck.id)
 
     fun deckOf(card: ObservableEntity<Card>): ObservableEntity<Deck>? = decks.items.find { it.id == card.deckId }
 
@@ -146,14 +168,15 @@ class AnkiStore(
     private fun buildQueue(
         deck: ObservableEntity<Deck>,
         deckCards: List<ObservableEntity<Card>>,
-        doneToday: List<ReviewEntry>
+        doneToday: DoneToday
     ): DeckQueue {
+        val now = minute
+        val today = today
         val learnAheadUntil = now + scheduler.options.learnAhead
         val endOfToday = today.plusDays(1).atStartOfDay(zone).toInstant()
 
-        val newLimit = (deck[Deck::newPerDay] - doneToday.count { it.before.state == CardState.NEW }).coerceAtLeast(0)
-        val reviewLimit = (deck[Deck::reviewsPerDay] - doneToday.count { it.before.state == CardState.REVIEW })
-            .coerceAtLeast(0)
+        val newLimit = (deck[Deck::newPerDay] - doneToday.newCards).coerceAtLeast(0)
+        val reviewLimit = (deck[Deck::reviewsPerDay] - doneToday.reviews).coerceAtLeast(0)
 
         val byState = deckCards.groupBy { it[Card::schedule].state }
         val learning = (byState[CardState.LEARNING].orEmpty() + byState[CardState.RELEARNING].orEmpty())

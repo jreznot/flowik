@@ -37,10 +37,15 @@ internal class PolicyObservable<T>(
     initial: T,
     private val name: String? = null,
     private val comparer: Comparer<T>,
-) : MutableObservable<T> {
+) : MutableObservable<T>, ObservationHooks {
 
     /** The tracking atom — dependents observe this, never the wrapper. */
     private val version = ObservableValue(0L, name = "${name ?: "policy"}-version")
+
+    // Dependents observe the version atom, so it is the one to ask.
+    override fun onBecomeObserved(listener: () -> Unit): Disposable = version.onBecomeObserved(listener)
+
+    override fun onBecomeUnobserved(listener: () -> Unit): Disposable = version.onBecomeUnobserved(listener)
 
     private var revision = 0L
 

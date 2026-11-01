@@ -8,6 +8,7 @@ import com.vaadin.flow.component.textfield.TextField
 import demo.vaadin.anki.*
 import flowik.core.ObservableEntity
 import flowik.core.action
+import flowik.core.autoRun
 import flowik.vaadin.testing.descendants
 import flowik.vaadin.testing.find
 import flowik.vaadin.testing.findByClass
@@ -96,6 +97,24 @@ class AnkiViewTest {
             mapOf(Answer.AGAIN to "10m", Answer.HARD to "5d", Answer.GOOD to "12d", Answer.EASY to "22d"),
             view.intervalLabels()
         )
+    }
+
+    @Test
+    fun `answering a card recounts only its own deck`() {
+        val store = AnkiStore(clock)
+        val view = AnkiView(store)
+        val capitals = store.deck("Capitals of Europe")
+        val spanish = store.deck("Spanish Basics")
+        var capitalsRuns = 0
+        var spanishRuns = 0
+        autoRun { capitalsRuns++; store.queueOf(capitals) }
+        autoRun { spanishRuns++; store.queueOf(spanish) }
+        store.study(spanish)
+
+        view.answer(Answer.GOOD)
+
+        assertEquals(1, capitalsRuns)
+        assertEquals(2, spanishRuns)
     }
 
     @Test
