@@ -1,8 +1,5 @@
 package flowik.vaadin
 
-import com.vaadin.flow.component.AbstractField
-import com.vaadin.flow.component.ClickEvent
-import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.ComponentUtil
 import com.vaadin.flow.component.Focusable
 import com.vaadin.flow.component.avatar.Avatar
@@ -13,8 +10,6 @@ import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
-import com.vaadin.flow.dom.DomEvent
-import com.vaadin.flow.internal.JacksonUtils
 import com.vaadin.flow.internal.nodefeature.ElementListenerMap
 import flowik.core.Bindings
 import flowik.core.MutableObservable
@@ -22,6 +17,9 @@ import flowik.core.ObservableList
 import flowik.core.action
 import flowik.core.observable
 import flowik.core.observableRef
+import flowik.vaadin.testing.fireDomEvent
+import flowik.vaadin.testing.setValueFromClient
+import flowik.vaadin.testing.simulateClick
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -40,18 +38,6 @@ class BindingsTest {
         init {
             add(caption)
         }
-    }
-
-    /**
-     * Sends a DOM event the way the browser would. Each listener's filter is
-     * evaluated on the client and its result sent along; [passing] says what
-     * the browser decided for all of them.
-     */
-    private fun Component.fireDomEvent(type: String, passing: Boolean = true) {
-        val listeners = element.node.getFeature(ElementListenerMap::class.java)
-        val data = JacksonUtils.createObjectNode()
-        listeners.getExpressions(type).forEach { data.put(it, passing) }
-        listeners.fireEvent(DomEvent(element, type, data))
     }
 
     @Test
@@ -223,8 +209,8 @@ class BindingsTest {
         assertEquals("second", notes.value)
 
         // …a change from the client is.
-        ComponentUtil.fireEvent(area, AbstractField.ComponentValueChangeEvent(area, area, "second", true))
-        assertEquals("typed", notes.value)
+        area.setValueFromClient("typed by the user")
+        assertEquals("typed by the user", notes.value)
     }
 
     @Test
@@ -236,13 +222,11 @@ class BindingsTest {
             field.value(query) { typed -> if (typed.length <= 3) query.value = typed.uppercase() }
         }
 
-        field.value = "ab"
-        ComponentUtil.fireEvent(field, AbstractField.ComponentValueChangeEvent(field, field, "", true))
+        field.setValueFromClient("ab")
         assertEquals("AB", query.value)
         assertEquals("AB", field.value)
 
-        field.value = "abcd"
-        ComponentUtil.fireEvent(field, AbstractField.ComponentValueChangeEvent(field, field, "AB", true))
+        field.setValueFromClient("abcd")
         assertEquals("AB", query.value)
         assertEquals("AB", field.value)
     }
@@ -281,7 +265,7 @@ class BindingsTest {
             a.value = 1
             b.value = 1
         }
-        ComponentUtil.fireEvent(card, ClickEvent(card))
+        card.simulateClick()
 
         // One batched update, never the half-written (1, 0).
         assertEquals(listOf(0 to 0, 1 to 1), seen)
@@ -332,7 +316,7 @@ class BindingsTest {
             b.value++
         }
 
-        row.fireDomEvent("keydown", passing = false)
+        row.fireDomEvent("keydown", filtersPass = false)
         assertEquals(listOf(0 to 0), seen)
 
         row.fireDomEvent("keydown")

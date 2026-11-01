@@ -37,17 +37,19 @@ internal class PolicyComputed<T>(
 
     private var revision = 0L
 
-    private var last: T = untracked { inner.value }
-
     /** `true` once [inner] has been invalidated and the refresh is still pending. */
     private var stale = false
 
+    // Subscribed before the first read, so that read connects [inner] to its
+    // sources — an unobserved computed would evaluate and keep nothing.
     private val subscription: Disposable = inner.subscribe {
         if (!stale) {
             stale = true
             Tracking.schedule(this)
         }
     }
+
+    private var last: T = untracked { inner.value }
 
     override val value: T
         get() {
@@ -81,7 +83,8 @@ internal class PolicyComputed<T>(
 
     /**
      * Stops observing the wrapped computation: dependents are no longer notified
-     * and [value] stays frozen at the last observed result.
+     * and [value] stays frozen at the last observed result. The wrapped
+     * computation, left without observers, releases its own sources too.
      */
     override fun dispose() {
         subscription.dispose()

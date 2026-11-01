@@ -222,6 +222,21 @@ Two small bindings cover what lists and tabs keep needing: `activeWhen { }` togg
 class and `aria-selected` together, and `focusWhen { }` puts the caret in a field each time a
 condition turns true — a search box that a button reveals.
 
+Data components and forms have bindings of their own:
+
+- `items { store.visibleCards }` on a `Grid`, `Select`, `ComboBox` or any other component with a
+  list data view replaces the items when the list changes, and refreshes just the one row whose
+  entity changed — renderers run outside any reaction, so this is what keeps a column current. The
+  selection survives as long as its items are still in the list;
+- `errorMessage { if (taken) "This name is already used." else null }` marks a field invalid while
+  there is a message, with the field's own validation switched off so it cannot overrule it;
+- `menu.item("Delete") { store.delete(card) }` adds a menu item whose click runs as an action, and
+  `checked(store::showDone.asObservable())` binds a checkable item two-way.
+
+For tests, `testImplementation(testFixtures("com.github.jreznot.flowik:flowik-vaadin:…"))` brings
+server-side helpers: `find<T>()`, `isShown()`, `simulateClick()`, `fireDomEvent(…)`, and
+`setValueFromClient(…)` — the client edit that a two-way binding writes back.
+
 ### Using it from a plugin (`flowik-intellij`)
 
 The IntelliJ Platform has its own declarative panel builder, the [Kotlin UI DSL][ij:ui-dsl]. Flowik
@@ -734,7 +749,7 @@ several bindings.
 | State primitives           | `observable`, `observableRef` / `observableStruct`, `observables` (lists), `observableSet`              | Local `ValueSignal`, `ListSignal`; shared `SharedValueSignal`, `SharedNumberSignal`, `SharedListSignal`, `SharedMapSignal`, `SharedNodeSignal` |
 | Object state               | `observable(obj)` splits a data class into one atom per property; `nested` / `nestedList` go deeper     | A signal holds one value, usually an immutable record replaced with `update(...)`; `modify(...)` for mutable objects            |
 | Reading                    | `.value` / `get` anywhere; tracked inside a derivation, a plain read outside one                        | `get()` is tracked and only allowed in a reactive context (effect, computed, transaction); `peek()` everywhere else              |
-| Derived values             | `computed { }` caches until a dependency changes; `computedStruct` / `computedRef` notify only on a real change | `Signal.computed(...)` re-runs on every read; `Signal.cached(...)` caches; `map(...)`, `Signal.not(...)`                    |
+| Derived values             | `computed { }` caches while observed and lets go of its sources once nothing reads it; `computedStruct` / `computedRef` notify only on a real change | `Signal.computed(...)` re-runs on every read; `Signal.cached(...)` caches; `map(...)`, `Signal.not(...)`                    |
 | Side effects               | `autoRun`, `reaction(supply, effect)`, `whenThen(check, effect)`                                        | `Signal.effect(component, ...)` with an `EffectContext` (`isInitialRun`, `isBackgroundChange`); `Signal.unboundEffect(...)`     |
 | Untracked reads            | `untracked { }`                                                                                         | `peek()`, `Signal.untracked(...)`                                                                                             |
 | Writes inside derivations  | Allowed in `autoRun` / reactions; `computed` should stay pure                                           | Effect and computed callbacks run in a read-only transaction; `Signal.runWithoutTransaction(...)` to opt out                    |
@@ -876,7 +891,9 @@ Real, runnable demos live in the repo:
 - [`flowik-vaadin-demo`](flowik-vaadin-demo) — the same Todo app on Vaadin Flow with property
   delegates and two-way input bindings, a master/detail Employees page, and an
   [Obsidian-like note editor](flowik-vaadin-demo/src/main/kotlin/demo/vaadin/obsidian) ported from
-  the Swing demo: sliding sidebars, animated tabs and keyboard shortcuts.
+  the Swing demo: sliding sidebars, animated tabs and keyboard shortcuts, and an
+  [Anki-style flashcard app](flowik-vaadin-demo/src/main/kotlin/demo/vaadin/anki) whose study queues
+  are derived from the cards, the review log and the clock.
 - [`flowik-intellij-demo`](flowik-intellij-demo) — an IDE plugin with a tool window built from the
   Kotlin UI DSL: live two-way bindings, a computed label, and a conditionally visible row
 

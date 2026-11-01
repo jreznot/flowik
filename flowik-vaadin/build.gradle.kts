@@ -1,5 +1,7 @@
 plugins {
     id("io.spring.dependency-management") version "1.1.7"
+    // Test helpers for apps built on the module: testImplementation(testFixtures(…))
+    `java-test-fixtures`
 }
 
 extra["vaadinVersion"] = "25.3.3"

@@ -16,24 +16,14 @@ class AutoRun(
     private val effect: () -> Unit
 ) : Tracker, Disposable {
 
-    private val dependencies = mutableSetOf<ObservableValue<*>>()
+    private val dependencies = DependencySet(this)
     private var isDisposed = false
 
     /** Run the effect, tracking dependencies. */
     fun run() {
         if (isDisposed) return
 
-        // Unsubscribe from old dependencies
-        dependencies.forEach { it.removeObserver(this) }
-        dependencies.clear()
-
-        // Execute and track
-        Tracking.push(this)
-        val result = try {
-            runCatching { effect() }
-        } finally {
-            Tracking.pop()
-        }
+        val result = runCatching { dependencies.track(effect) }
 
         // Reported outside the tracking context, so reads inside the error
         // handler do not become dependencies of this autoRun.
@@ -43,15 +33,11 @@ class AutoRun(
     /** Stop this autoRun from ever running again. */
     override fun dispose() {
         isDisposed = true
-        for (it in dependencies) {
-            it.removeObserver(this)
-        }
         dependencies.clear()
     }
 
-    override fun addDependency(observable: ObservableValue<*>) {
-        dependencies.add(observable)
-        observable.addObserver(this)
+    override fun addDependency(dependency: Dependency) {
+        dependencies.add(dependency)
     }
 
     override fun toString(): String = "AutoRun(${name ?: "anonymous"})"

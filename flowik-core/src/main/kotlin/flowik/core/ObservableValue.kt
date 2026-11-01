@@ -10,7 +10,7 @@ import kotlin.reflect.KProperty
  * whether anything changed. For identity or deep structural change detection
  * use [observableRef] / [observableStruct] instead.
  */
-class ObservableValue<T>(initial: T, private val name: String? = null) : MutableObservable<T> {
+class ObservableValue<T>(initial: T, private val name: String? = null) : MutableObservable<T>, Dependency {
 
     private var _value: T = initial
 
@@ -41,13 +41,16 @@ class ObservableValue<T>(initial: T, private val name: String? = null) : Mutable
         this.value = value
     }
 
-    fun addObserver(tracker: Tracker) {
+    override fun addObserver(tracker: Tracker) {
         observers.add(tracker)
     }
 
-    fun removeObserver(tracker: Tracker) {
+    override fun removeObserver(tracker: Tracker) {
         observers.remove(tracker)
     }
+
+    /** How many trackers depend on this atom — for tests of the tracking lifecycle. */
+    internal val observerCount: Int get() = observers.size
 
     override fun subscribe(observer: Observer): Disposable {
         subscribers.add(observer)

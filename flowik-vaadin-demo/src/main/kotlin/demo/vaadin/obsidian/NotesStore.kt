@@ -98,8 +98,7 @@ class NotesStore : Store {
         val fileName = if (trimmed.endsWith(".md")) trimmed else "$trimmed.md"
         if (isNameTaken(fileName)) return@action null
 
-        notes.add(Note(fileName, content ?: "# ${fileName.removeSuffix(".md")}\n\n"))
-        val created = notes[notes.size - 1]
+        val created = notes.add(Note(fileName, content ?: "# ${fileName.removeSuffix(".md")}\n\n"))
         openNote(created)
         created
     }

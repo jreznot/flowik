@@ -21,22 +21,14 @@ class Reaction<T>(
     private val effect: (T) -> Unit
 ) : Tracker, Disposable {
 
-    private val dependencies = mutableSetOf<ObservableValue<*>>()
+    private val dependencies = DependencySet(this)
     private var isDisposed = false
     private var initialized = false
 
     fun run() {
         if (isDisposed) return
 
-        dependencies.forEach { it.removeObserver(this) }
-        dependencies.clear()
-
-        Tracking.push(this)
-        val supplied = try {
-            runCatching(supply)
-        } finally {
-            Tracking.pop()
-        }
+        val supplied = runCatching { dependencies.track(supply) }
 
         val firstRun = !initialized
         initialized = true
@@ -59,13 +51,11 @@ class Reaction<T>(
 
     override fun dispose() {
         isDisposed = true
-        dependencies.forEach { it.removeObserver(this) }
         dependencies.clear()
     }
 
-    override fun addDependency(observable: ObservableValue<*>) {
-        dependencies.add(observable)
-        observable.addObserver(this)
+    override fun addDependency(dependency: Dependency) {
+        dependencies.add(dependency)
     }
 
     override fun toString(): String = "Reaction(${name ?: "anonymous"})"

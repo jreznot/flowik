@@ -75,6 +75,24 @@ open class ObservableList<T>(initial: List<T> = emptyList()) : Iterable<T>, Muta
         return true
     }
 
+    /**
+     * Removes every item that matches [predicate], in one batch, and returns
+     * whether anything was removed.
+     *
+     * Each item leaves with a [ListChange.Remove] of its own, so a container
+     * bound with `items(list)` drops just those rows instead of rebuilding them
+     * all — which a `setAll(items.filter { … })` would do — and reactions run
+     * once, after the last removal.
+     */
+    fun removeAll(predicate: (T) -> Boolean): Boolean {
+        val doomed = backing.indices.filter { predicate(backing[it]) }
+        if (doomed.isEmpty()) return false
+        action {
+            doomed.asReversed().forEach { removeAt(it) }
+        }
+        return true
+    }
+
     operator fun set(index: Int, item: T): T {
         val old = backing.set(index, item)
         fireChange(ListChange.Update(index, old, item))

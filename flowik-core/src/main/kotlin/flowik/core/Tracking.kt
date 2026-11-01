@@ -4,8 +4,8 @@ package flowik.core
  * Global dependency tracking context.
  *
  * When a [Reaction] or [Computed] is evaluating, it pushes itself onto
- * the tracker stack. Any [ObservableValue] that is read during that evaluation
- * registers the tracker as a dependent. This is the automatic dependency
+ * the tracker stack. Any [Dependency] — an [ObservableValue] or a [Computed] —
+ * that is read during that evaluation registers the tracker as a dependent. This is the automatic dependency
  * tracking mechanism — the MobX-style "magic".
  */
 object Tracking {
@@ -26,6 +26,16 @@ object Tracking {
 
     /** Pending [PolicyComputed] refreshes, evaluated *before* the reactions of a batch. */
     private val pendingRefreshes = ThreadLocal.withInitial { linkedSetOf<PolicyComputed<*>>() }
+
+    /**
+     * Computeds that lost their last observer during a batch or a flush. They
+     * are suspended once it ends, unless something observes them again by then —
+     * typically a component rebuilt in the same flush that reads them again.
+     */
+    private val pendingSuspensions = ThreadLocal.withInitial { linkedSetOf<Computed<*>>() }
+
+    /** Depth of reaction flushes in progress; suspensions wait for them too. */
+    private val flushDepth = ThreadLocal.withInitial { 0 }
 
     /** Guards against a non-converging derived graph in [flushRefreshes]. */
     private const val MAX_REFRESH_ROUNDS = 100
@@ -70,7 +80,13 @@ object Tracking {
             batchDepth.set(depth)
         }
         if (depth == 0) {
-            flushPending()
+            flushDepth.set(flushDepth.get() + 1)
+            try {
+                flushPending()
+            } finally {
+                flushDepth.set(flushDepth.get() - 1)
+            }
+            flushSuspensions()
         }
     }
 
@@ -97,6 +113,28 @@ object Tracking {
             pendingWhens.get().add(`when`)
         } else {
             `when`.run()
+        }
+    }
+
+    /**
+     * Suspends [computed], which has just lost its last observer — at once, or
+     * at the end of the batch or flush in progress.
+     */
+    internal fun suspendWhenIdle(computed: Computed<*>) {
+        if (isBatching || flushDepth.get() > 0) {
+            pendingSuspensions.get().add(computed)
+        } else {
+            computed.suspendIfUnobserved()
+        }
+    }
+
+    private fun flushSuspensions() {
+        if (flushDepth.get() > 0) return
+        val pending = pendingSuspensions.get()
+        while (pending.isNotEmpty()) {
+            val snapshot = pending.toList()
+            pending.clear()
+            snapshot.forEach { it.suspendIfUnobserved() }
         }
     }
 
@@ -145,8 +183,9 @@ object Tracking {
 }
 
 /**
- * Marker interface for anything that can track observable reads.
+ * Anything that can track reads: told about every [Dependency] it reads while
+ * it is on the tracking stack.
  */
 interface Tracker {
-    fun addDependency(observable: ObservableValue<*>)
+    fun addDependency(dependency: Dependency)
 }

@@ -1,8 +1,6 @@
 package demo.vaadin
 
-import com.vaadin.flow.component.ClickEvent
 import com.vaadin.flow.component.Component
-import com.vaadin.flow.component.ComponentUtil
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.tabs.Tabs
@@ -13,6 +11,9 @@ import flowik.core.observable
 import flowik.core.observableRef
 import flowik.core.observables
 import flowik.core.viewmodel.createViewModel
+import flowik.vaadin.testing.descendants
+import flowik.vaadin.testing.hasClass
+import flowik.vaadin.testing.simulateClick
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,16 +22,9 @@ import kotlin.test.assertTrue
 
 class EmployeesViewTest {
 
-    private fun Component.descendants(): List<Component> =
-        children.toList().flatMap { listOf(it) + it.descendants() }
-
-    private fun Component.hasClass(name: String) = element.classList.contains(name)
-
     private fun Component.rows() = descendants().filter { it.hasClass("employee-row") }
 
     private fun Component.button(text: String) = descendants().filterIsInstance<Button>().single { it.text == text }
-
-    private fun Component.click() = ComponentUtil.fireEvent(this, ClickEvent(this))
 
     private fun EmployeesView.detailName() =
         descendants().single { it.hasClass("employee-detail") }.descendants().filterIsInstance<H2>().single().text
@@ -50,11 +44,11 @@ class EmployeesViewTest {
         assertEquals(3, view.rows().size)
 
         val first = view.rows().first()
-        first.click()
+        first.simulateClick()
         assertEquals("Eleanor Pena", view.detailName())
         assertTrue(first.hasClass("selected"))
 
-        view.button("Delete").click()
+        view.button("Delete").simulateClick()
         assertEquals(2, view.rows().size)
         assertEquals("Ralph Edwards", view.detailName())
     }
@@ -93,7 +87,7 @@ class EmployeesViewTest {
         assertEquals(3, master.rows().size)
 
         // A click is only reported: the master does not select by itself.
-        master.rows()[1].click()
+        master.rows()[1].simulateClick()
         assertEquals(listOf("select Jane Cooper"), events)
         assertEquals(0, master.rows().count { it.hasClass("selected") })
 
@@ -104,7 +98,7 @@ class EmployeesViewTest {
         action { query.value = "Kristin" }
         assertEquals(1, master.rows().size)
 
-        master.button("Add New").click()
+        master.button("Add New").simulateClick()
         assertEquals(listOf("select Jane Cooper", "add"), events)
     }
 
@@ -126,7 +120,7 @@ class EmployeesViewTest {
         assertTrue(save.isEnabled)
         assertEquals("Esther", employee[Employee::firstName])
 
-        save.click()
+        save.simulateClick()
         assertEquals(1, saves)
         // The caller did not submit, so the person is untouched.
         assertEquals("Esther", employee[Employee::firstName])
@@ -149,7 +143,7 @@ class EmployeesViewTest {
             onDelete = {},
         )
 
-        detail.descendants().single { it.hasClass("clickable") }.click()
+        detail.descendants().single { it.hasClass("clickable") }.simulateClick()
         assertEquals(listOf("Esther Howard"), opened)
         assertNull(detail.descendants().firstOrNull { it is JobTab })
     }

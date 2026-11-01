@@ -1,6 +1,8 @@
 package flowik.core
 
 import java.math.BigDecimal
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -25,6 +27,8 @@ fun observable(initial: LocalDate, name: String? = null): ObservableValue<LocalD
 fun observable(initial: LocalTime, name: String? = null): ObservableValue<LocalTime> = ObservableValue(initial, name)
 fun observable(initial: LocalDateTime, name: String? = null): ObservableValue<LocalDateTime> =
     ObservableValue(initial, name)
+fun observable(initial: Instant, name: String? = null): ObservableValue<Instant> = ObservableValue(initial, name)
+fun observable(initial: Duration, name: String? = null): ObservableValue<Duration> = ObservableValue(initial, name)
 
 // Any type not matched by the overloads above (data classes, domain objects, etc.)
 // is wrapped in an ObservableMap, exposing each property as an individual ObservableValue.

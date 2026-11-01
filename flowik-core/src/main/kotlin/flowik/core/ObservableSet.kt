@@ -43,9 +43,9 @@ import kotlin.reflect.KProperty
  * element. Model a keyed reactive collection as an [ObservableEntityList] instead.
  *
  * Implementation note: reads register a dependency on a private version atom
- * rather than on the set itself, because [Tracker.addDependency] is typed to
- * [ObservableValue] — the same delegation [ObservableList] uses. Writes
- * therefore respect [action] batching.
+ * rather than on the set itself, so that writes notify through an ordinary
+ * atom — the same delegation [ObservableList] uses. Writes therefore respect
+ * [action] batching.
  */
 class ObservableSet<T>(initial: Collection<T> = emptySet()) :
     Iterable<T>, MutableObservable<MutableSet<T>>, ReadWriteProperty<Any?, MutableSet<T>> {

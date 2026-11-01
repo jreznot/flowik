@@ -34,8 +34,7 @@ class When(
     private val effect: () -> Unit
 ) : Tracker, Disposable {
 
-    private val dependencies = mutableSetOf<ObservableValue<*>>()
-    private val computedDeps = mutableSetOf<Computed<*>>()
+    private val dependencies = DependencySet(this)
     private var isDisposed = false
 
     /**
@@ -45,19 +44,7 @@ class When(
     fun run() {
         if (isDisposed) return
 
-        // Unsubscribe from old dependencies
-        dependencies.forEach { it.removeObserver(this) }
-        dependencies.clear()
-        computedDeps.forEach { it.removeObserver(this) }
-        computedDeps.clear()
-
-        // Evaluate predicate inside a tracking context
-        Tracking.push(this)
-        val evaluated = try {
-            runCatching(predicate)
-        } finally {
-            Tracking.pop()
-        }
+        val evaluated = runCatching { dependencies.track(predicate) }
 
         // Errors are reported outside the tracking context, so reads inside the
         // error handler do not become dependencies of this reaction.
@@ -79,21 +66,11 @@ class When(
 
     override fun dispose() {
         isDisposed = true
-        dependencies.forEach { it.removeObserver(this) }
         dependencies.clear()
-        computedDeps.forEach { it.removeObserver(this) }
-        computedDeps.clear()
     }
 
-    override fun addDependency(observable: ObservableValue<*>) {
-        dependencies.add(observable)
-        observable.addObserver(this)
-    }
-
-    /** Track computed values so we can unsubscribe later. */
-    fun addComputedDependency(computed: Computed<*>) {
-        computedDeps.add(computed)
-        computed.addObserver(this)
+    override fun addDependency(dependency: Dependency) {
+        dependencies.add(dependency)
     }
 
     override fun toString(): String = "When(${name ?: "anonymous"})"

@@ -424,7 +424,7 @@ fun todoDemo() {
             }
 
             fun clearCompleted() = action {
-                doneTodos.forEach { todos.remove(it) }
+                todos.removeAll { it[TodoItem::done] }
             }
         }
 

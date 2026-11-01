@@ -1,11 +1,11 @@
 package demo.vaadin
 
-import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.ComponentUtil
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
+import flowik.vaadin.testing.descendants
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -16,9 +16,6 @@ import kotlin.test.assertTrue
  * bindings: they are plain reactions over the store, not client round-trips.
  */
 class TodoViewTest {
-
-    private fun Component.descendants(): List<Component> =
-        children.toList().flatMap { listOf(it) + it.descendants() }
 
     @Test
     fun `the view binds while it is alive and stops when it is detached`() {

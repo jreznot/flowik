@@ -46,13 +46,16 @@ class ObservableEntityList<T : Any>(initial: List<T> = emptyList()) : Observable
         initial.forEach { super.add(ObservableEntity(it)) }
     }
 
-    /** Wraps [item] in an [ObservableEntity] and appends it to the list. */
+    /**
+     * Wraps [item] in an [ObservableEntity], appends it to the list and returns
+     * the wrapper — the entity the list now holds, ready to be selected or opened.
+     */
     @JvmName("addItem")
-    fun add(item: T): Unit = super.add(ObservableEntity(item))
+    fun add(item: T): ObservableEntity<T> = ObservableEntity(item).also { super.add(it) }
 
-    /** Wraps [item] in an [ObservableEntity] and inserts it at [index]. */
+    /** Wraps [item] in an [ObservableEntity], inserts it at [index] and returns the wrapper. */
     @JvmName("addItemAt")
-    fun add(index: Int, item: T): Unit = super.add(index, ObservableEntity(item))
+    fun add(index: Int, item: T): ObservableEntity<T> = ObservableEntity(item).also { super.add(index, it) }
 
     /**
      * Removes the first wrapper whose initial value equals [item].

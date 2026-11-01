@@ -29,9 +29,9 @@ import kotlin.reflect.KProperty
  * ```
  *
  * Implementation note: reads register a dependency on a private version atom
- * rather than on the wrapper itself, because [Tracker.addDependency] is typed
- * to [ObservableValue]. This is the same delegation [ObservableList] uses for
- * its version counter, and it means writes still respect [action] batching.
+ * rather than on the wrapper itself, so that writes notify through an ordinary
+ * atom. This is the same delegation [ObservableList] uses for its version
+ * counter, and it means writes still respect [action] batching.
  */
 internal class PolicyObservable<T>(
     initial: T,

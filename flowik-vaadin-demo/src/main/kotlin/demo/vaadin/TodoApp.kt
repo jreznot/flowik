@@ -92,7 +92,7 @@ class TodoView : VerticalLayout(), Bindings by Bindings() {
         fun removeItem(item: ObservableEntity<TodoItem>) = action { todos.remove(item) }
 
         fun clearCompleted() = action {
-            doneTodos.forEach { todos.remove(it) }
+            todos.removeAll { it[TodoItem::done] }
         }
     }
 

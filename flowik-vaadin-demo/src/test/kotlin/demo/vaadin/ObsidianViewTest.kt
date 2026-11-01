@@ -1,13 +1,13 @@
 package demo.vaadin
 
-import com.vaadin.flow.component.ClickEvent
 import com.vaadin.flow.component.Component
-import com.vaadin.flow.component.ComponentUtil
-import com.vaadin.flow.dom.DomEvent
-import com.vaadin.flow.internal.JacksonUtils
-import com.vaadin.flow.internal.nodefeature.ElementListenerMap
 import demo.vaadin.obsidian.*
 import flowik.core.action
+import flowik.vaadin.testing.descendants
+import flowik.vaadin.testing.fireDomEvent
+import flowik.vaadin.testing.hasClass
+import flowik.vaadin.testing.isShown
+import flowik.vaadin.testing.simulateClick
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,32 +17,12 @@ import kotlin.test.assertTrue
 
 class ObsidianViewTest {
 
-    private fun Component.descendants(): List<Component> =
-        children.toList().flatMap { listOf(it) + it.descendants() }
-
-    private fun Component.hasClass(name: String) = element.classList.contains(name)
-
-    /** Visible itself and inside nothing hidden — what the user can actually see. */
-    private fun Component.isShown(): Boolean = isVisible && parent.map { it.isShown() }.orElse(true)
-
     private fun Component.rows() = descendants().filterIsInstance<NoteRow>().filter { it.isShown() }
 
     private fun Component.tabs() = descendants().filterIsInstance<NoteTab>()
 
     private fun Component.editorTitle() =
         descendants().single { it.hasClass("obs-inline-title") }.element.text
-
-    private fun Component.click() = ComponentUtil.fireEvent(this, ClickEvent(this))
-
-    /** A DOM event as the browser sends it — `NoteTab` listens on the element, not for a `ClickEvent`. */
-    private fun Component.fireDomEvent(type: String) {
-        val listeners = element.node.getFeature(ElementListenerMap::class.java)
-        // The browser evaluates each listener's filter and sends the result
-        // along; the server only runs the listeners whose filter passed.
-        val data = JacksonUtils.createObjectNode()
-        listeners.getExpressions(type).forEach { data.put(it, true) }
-        listeners.fireEvent(DomEvent(element, type, data))
-    }
 
     @Test
     fun `the vault starts with one note open`() {
@@ -60,7 +40,7 @@ class ObsidianViewTest {
         val store = NotesStore()
         val view = ObsidianView(store)
 
-        view.rows()[2].click()
+        view.rows()[2].simulateClick()
         assertEquals(2, view.tabs().size)
         assertEquals("Meeting notes 2026-08-22", view.editorTitle())
         assertTrue(view.rows()[2].hasClass("active"))
@@ -94,11 +74,11 @@ class ObsidianViewTest {
         val store = NotesStore()
         val view = ObsidianView(store)
         val welcome = store.activeNote!!
-        view.rows()[1].click()
+        view.rows()[1].simulateClick()
         view.tabs().first().fireDomEvent("click")
 
         val tab = view.tabs().first()
-        tab.descendants().single { it.hasClass("obs-tab-close") }.click()
+        tab.descendants().single { it.hasClass("obs-tab-close") }.simulateClick()
         assertTrue(tab.hasClass("closing"))
         assertEquals(2, store.openNotes.size)
         assertSame(welcome, store.activeNote)
@@ -112,13 +92,13 @@ class ObsidianViewTest {
     fun `selecting a collapsing tab calls off the close`() {
         val store = NotesStore()
         val view = ObsidianView(store)
-        view.rows()[1].click()
+        view.rows()[1].simulateClick()
 
         val welcomeTab = view.tabs().first()
-        welcomeTab.descendants().single { it.hasClass("obs-tab-close") }.click()
+        welcomeTab.descendants().single { it.hasClass("obs-tab-close") }.simulateClick()
         assertTrue(welcomeTab.hasClass("closing"))
 
-        view.rows()[0].click()
+        view.rows()[0].simulateClick()
         assertFalse(welcomeTab.hasClass("closing"))
         welcomeTab.fireDomEvent("animationend")
         assertEquals(2, store.openNotes.size)
