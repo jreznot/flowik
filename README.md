@@ -520,13 +520,13 @@ Button("Reload") { store.planets.refresh() }
 | `dispose()`           | cancels, ignores later pushes, freezes the value; registers with `Bindings`   |
 
 `lazyObservableAsync` launches under the scope you give it: only one run exists at a time, `refresh`
-cancels the previous one, and pushes that arrive from it afterwards are dropped. The body starts on
+cancels the previous one, and pushes that arrive from it afterward are dropped. The body starts on
 `context` and each push is applied on `mainContext` as an `action` — the same pair `flowAction` takes,
 defaulting to `Dispatchers.Main` (the EDT under Swing), so no `runInAction` is needed inside. The
 scope is bound at construction rather than at the call site, because a lazy observable has no call
 site: it starts from a read, which may happen inside a binding, a `computed`, or a repaint.
 
-For a callback or listener API, use the plain flavour — its computation returns immediately and pushes
+For a callback or listener API, use the plain flavor — its computation returns immediately and pushes
 whenever it has something, from the UI thread:
 
 ```kotlin
@@ -561,7 +561,7 @@ Span().apply { text { "${store.queueOf(deck).size} due" } }   // cached per deck
 Called inside a reaction or a `computed`, each key gets a `Computed` of its own, shared by every
 reader of that key. An entry lives only while something reads it: once its last reader is disposed it
 is dropped, together with everything it read, so a `computedFn` over a long-lived store does not pile
-up entries for keys nobody shows any more. Called outside any reaction, an unknown key is simply
+up entries for keys nobody shows anymore. Called outside any reaction, an unknown key is simply
 evaluated and nothing is cached — the same rule as for an unobserved `computed`.
 
 `computedFn(equals = Comparer.Structural) { … }` gives each entry `computedStruct` semantics: its
@@ -642,10 +642,9 @@ rows — keep working unchanged.
 
 ### `Bindings`: where the subscriptions live
 
-A UI DSL panel is built, not held: `panel { }` returns a `DialogPanel` and the builder receivers are
+A UI DSL panel is built: `panel { }` returns a `DialogPanel` and the builder receivers are
 gone. There is no place to hang the reactions a binding creates, so the bindings take a `Bindings`
-(from `flowik-core`) as a **context parameter** and register into it. The Swing and Vaadin bindings
-work the same way — this is one mechanism, not a per-toolkit one:
+(from `flowik-core`) as a **context parameter** and register into it.
 
 ```kotlin
 class MyToolWindow(parent: Disposable) {
@@ -880,7 +879,7 @@ This works because of what a component receives:
   ```
 
   You can narrow this back down with one `Signal.cached(...)` per field. In practice that means
-  modelling the record field by field, by hand, in every component that needs it, which is what
+  modeling the record field by field, by hand, in every component that needs it, which is what
   `observable(obj)` already does.
 
 - **An edit buffer it does not own.** `EmployeeEditor` takes a `ViewModel<Employee>` and an `onSave`.
