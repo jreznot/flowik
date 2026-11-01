@@ -9,15 +9,10 @@ import com.vaadin.flow.component.textfield.IntegerField
 import com.vaadin.flow.component.textfield.TextArea
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.value.ValueChangeMode
-import flowik.core.Bindings
-import flowik.core.ObservableEntity
-import flowik.core.observable
+import flowik.core.*
 import flowik.core.viewmodel.createViewModel
-import flowik.vaadin.Button
-import flowik.vaadin.disposeOnDetach
-import flowik.vaadin.enabled
-import flowik.vaadin.errorMessage
-import flowik.vaadin.value
+import flowik.vaadin.*
+import java.util.function.Supplier
 import kotlin.reflect.KProperty1
 
 /**
@@ -33,17 +28,16 @@ class CreateDeckDialog(
     onCreate: (String) -> Unit
 ) : Dialog(), Bindings by Bindings() {
 
-    private val deckName = observable("", name = "deckName")
-
-    private val nameError = {
-        deckName.value.trim().takeIf(isNameTaken)?.let { "A deck named '$it' already exists." }
+    private val deckName by observable("", name = "deckName")
+    private val nameError by computed {
+        deckName.trim().takeIf(isNameTaken)?.let { "A deck named '$it' already exists." }
     }
 
     private val name = TextField("Deck name").apply {
         setWidthFull()
         valueChangeMode = ValueChangeMode.EAGER
-        value(deckName)
-        errorMessage(nameError)
+        value(::deckName.asObservable())
+        errorMessage(::nameError)
     }
 
     init {
@@ -52,12 +46,12 @@ class CreateDeckDialog(
         add(name)
 
         val create = Button("Create") {
-            onCreate(deckName.value.trim())
+            onCreate(deckName.trim())
             close()
         }.apply {
             addThemeVariants(ButtonVariant.PRIMARY)
             addClickShortcut(Key.ENTER)
-            enabled { deckName.value.isNotBlank() && nameError() == null }
+            enabled { deckName.isNotBlank() && nameError == null }
         }
 
         footer.add(Button("Cancel") { close() }, create)
@@ -67,22 +61,30 @@ class CreateDeckDialog(
 }
 
 /**
- * A deck's name, description and daily limits, edited through a buffer and
- * saved together. Lowering a limit takes effect at once: the deck's counts are
- * derived from it.
+ * A deck's name, description and daily limits, edited through a buffer over
+ * [deck] and saved together. The deck itself is never touched from here: Save
+ * reports the new settings to [onSave], and Delete — once confirmed — to
+ * [onDelete].
+ *
+ * @param cardCount   how many cards the deck holds, for the delete confirmation
+ * @param isNameTaken whether another deck already uses a name
+ * @param onSave      receives the deck with its new name, description and limits
  */
 class DeckOptionsDialog(
-    private val store: AnkiStore,
-    private val deck: ObservableEntity<Deck>
+    private val deck: ObservableEntity<Deck>,
+    private val cardCount: Supplier<Int>,
+    isNameTaken: (String) -> Boolean,
+    onSave: (Deck) -> Unit,
+    private val onDelete: () -> Unit
 ) : Dialog(), Bindings by Bindings() {
 
     private val form = createViewModel(deck)
 
-    private val nameError = {
+    private val nameError by computed {
         val name = form[Deck::name].trim()
         when {
             name.isEmpty() -> "A deck needs a name."
-            store.isDeckNameTaken(name, except = deck) -> "A deck named '$name' already exists."
+            isNameTaken(name) -> "A deck named '$name' already exists."
             else -> null
         }
     }
@@ -95,7 +97,7 @@ class DeckOptionsDialog(
             setWidthFull()
             valueChangeMode = ValueChangeMode.EAGER
             value(form.property(Deck::name))
-            errorMessage(nameError)
+            errorMessage(::nameError)
         }
 
         val description = TextArea("Description").apply {
@@ -121,11 +123,18 @@ class DeckOptionsDialog(
             delete,
             Button("Cancel") { close() },
             Button("Save") {
-                form.submit()
+                onSave(
+                    deck.snapshot.copy(
+                        name = form[Deck::name],
+                        description = form[Deck::description],
+                        newPerDay = form[Deck::newPerDay],
+                        reviewsPerDay = form[Deck::reviewsPerDay]
+                    )
+                )
                 close()
             }.apply {
                 addThemeVariants(ButtonVariant.PRIMARY)
-                enabled { form.isDirty && nameError() == null }
+                enabled { form.isDirty && nameError == null }
             }
         )
 
@@ -145,14 +154,13 @@ class DeckOptionsDialog(
     }
 
     private fun confirmDelete() {
-        val count = store.cardsOf(deck).size
         Dialog().apply {
             headerTitle = "Delete deck?"
-            add(Paragraph("'${deck[Deck::name]}' and its ${plural(count, "card")} will be deleted."))
+            add(Paragraph("'${deck[Deck::name]}' and its ${plural(cardCount.get(), "card")} will be deleted."))
             footer.add(
                 Button("Cancel") { close() },
                 Button("Delete") {
-                    store.deleteDeck(deck)
+                    onDelete()
                     close()
                     this@DeckOptionsDialog.close()
                 }.apply { addThemeVariants(ButtonVariant.PRIMARY, ButtonVariant.ERROR) }

@@ -6,6 +6,7 @@ import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.icon.VaadinIcon
 import flowik.core.Bindings
 import flowik.core.ObservableEntity
+import flowik.core.ObservableList
 import flowik.vaadin.Button
 import flowik.vaadin.items
 import flowik.vaadin.text
@@ -15,11 +16,24 @@ import java.util.function.Supplier
 /**
  * Anki's main screen: every deck with its New / Learn / Due counts for today.
  *
- * The rows follow [AnkiStore.decks] one by one, and each count reads the
- * deck's derived queue — so answering a card anywhere re-counts the row with
- * nothing here listening for it.
+ * Stateless in the Compose sense: it is handed the decks and a way to read
+ * each one's queue, and reports what the user does. The rows follow [decks]
+ * one by one, and each count reads [queueOf] — derived state, so answering a
+ * card anywhere re-counts the row with nothing here listening for it.
+ *
+ * @param queueOf      today's queue of a deck; read inside the bindings, so it
+ *                     must be derived from observables to be followed
+ * @param studiedToday how many cards were answered today
  */
-class DeckList(private val store: AnkiStore, dialogs: AnkiDialogs) : Div(), Bindings by Bindings() {
+class DeckList(
+    decks: ObservableList<ObservableEntity<Deck>>,
+    queueOf: (ObservableEntity<Deck>) -> DeckQueue,
+    studiedToday: Supplier<Int>,
+    onOpenDeck: (ObservableEntity<Deck>) -> Unit,
+    onDeckOptions: (ObservableEntity<Deck>) -> Unit,
+    onCreateDeck: () -> Unit,
+    onAddCards: () -> Unit
+) : Div(), Bindings by Bindings() {
 
     init {
         addClassNames("anki-page", "anki-deck-list")
@@ -34,27 +48,27 @@ class DeckList(private val store: AnkiStore, dialogs: AnkiDialogs) : Div(), Bind
 
         val rows = Div().apply {
             addClassName("anki-table-body")
-            items(store.decks) { deck ->
+            items(decks) { deck ->
                 DeckRow(
                     deck,
-                    queue = { store.queueOf(deck) },
-                    onOpen = { store.showOverview(deck) },
-                    onOptions = { dialogs.deckOptions(deck) }
+                    queue = { queueOf(deck) },
+                    onOpen = { onOpenDeck(deck) },
+                    onOptions = { onDeckOptions(deck) }
                 )
             }
         }
 
         val empty = Caption("No decks yet — create one to start adding cards.", "anki-placeholder").apply {
-            visible { store.decks.isEmpty() }
+            visible { decks.isEmpty() }
         }
 
         val studied = Caption(classNames = arrayOf("anki-muted")).apply {
-            text { "Studied ${plural(store.studiedToday, "card")} today." }
+            text { "Studied ${plural(studiedToday.get(), "card")} today." }
         }
 
         val actions = Row(
-            Button("Create Deck") { dialogs.createDeck() },
-            Button("Add Cards") { dialogs.addCards(null) }.apply { addThemeVariants(ButtonVariant.PRIMARY) }
+            Button("Create Deck", onCreateDeck),
+            Button("Add Cards", onAddCards).apply { addThemeVariants(ButtonVariant.PRIMARY) }
         ).apply { addClassName("anki-actions") }
 
         add(H2("Decks"), Div(header, rows, empty).apply { addClassName("anki-table") }, studied, actions)

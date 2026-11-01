@@ -1,6 +1,7 @@
 package demo.vaadin
 
 import com.vaadin.flow.component.Component
+import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.select.Select
 import com.vaadin.flow.component.textfield.TextField
@@ -21,8 +22,6 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class AnkiViewTest {
@@ -44,6 +43,21 @@ class AnkiViewTest {
 
     private fun AnkiView.answerButton(answer: Answer) =
         shown("anki-answer-${answer.name.lowercase()}").single()
+
+    private fun AnkiView.showAnswer() = shown("anki-show-answer").single().simulateClick()
+
+    /** Shows the answer and rates the card, as the user does. */
+    private fun AnkiView.answer(answer: Answer) {
+        showAnswer()
+        answerButton(answer).simulateClick()
+    }
+
+    private fun AnkiView.intervalLabels() =
+        Answer.entries.associateWith { answerButton(it).descendants().first().element.text }
+
+    private fun AnkiView.undo() = find<Button>().single { it.text == "Undo" }.simulateClick()
+
+    private fun AnkiStore.card(front: String) = cards.items.single { it[Card::front] == front }
 
     @Test
     fun `the deck list counts what is due today within the limits`() {
@@ -77,10 +91,10 @@ class AnkiViewTest {
         assertEquals("hello", view.cardFront())
         assertEquals(listOf("6", "0", "5"), view.shown("anki-study-counts").single().descendants().map { it.element.text })
 
-        store.showAnswer()
+        view.showAnswer()
         assertEquals(
             mapOf(Answer.AGAIN to "10m", Answer.HARD to "5d", Answer.GOOD to "12d", Answer.EASY to "22d"),
-            store.answerLabels
+            view.intervalLabels()
         )
     }
 
@@ -89,22 +103,39 @@ class AnkiViewTest {
         val store = AnkiStore(clock)
         val view = AnkiView(store)
         store.study(store.deck("Spanish Basics"))
-        val cat = store.currentCard!!
+        val cat = store.card("cat")
         val before = cat[Card::schedule]
 
-        store.showAnswer()
-        store.answer(Answer.AGAIN)
-        store.showAnswer()
-        store.answer(Answer.GOOD)
+        view.answer(Answer.AGAIN)
+        view.answer(Answer.GOOD)
         assertEquals(2, store.studiedToday)
+        assertEquals("thank you", view.cardFront())
 
-        store.undo()
+        view.undo()
         assertEquals(1, store.studiedToday)
-        store.undo()
-        assertSame(cat, store.currentCard)
-        assertEquals(before, cat[Card::schedule])
+        assertEquals("hello", view.cardFront())
+
+        view.undo()
         assertEquals("cat", view.cardFront())
+        assertEquals(before, cat[Card::schedule])
+        assertTrue(view.shown("anki-card-back").isEmpty(), "an undone card starts from its question")
         assertFalse(store.canUndo)
+    }
+
+    @Test
+    fun `undo goes back to the deck the card came from`() {
+        val store = AnkiStore(clock)
+        val view = AnkiView(store)
+        val spanish = store.deck("Spanish Basics")
+        store.study(spanish)
+        view.answer(Answer.GOOD)
+
+        store.study(store.deck("Flowik API"))
+        assertEquals("Create a mutable atom", view.cardFront())
+
+        view.undo()
+        assertEquals(Screen.Study(spanish, resume = store.card("cat")), store.screen)
+        assertEquals("cat", view.cardFront())
     }
 
     @Test
@@ -115,12 +146,9 @@ class AnkiViewTest {
         action { deck[Deck::newPerDay] = 2 }
         store.study(deck)
 
-        repeat(2) {
-            store.showAnswer()
-            store.answer(Answer.EASY)
-        }
+        repeat(2) { view.answer(Answer.EASY) }
 
-        assertNull(store.currentCard)
+        assertTrue(view.shown("anki-card-front").isEmpty())
         val congrats = view.shown("anki-congrats").single()
         assertTrue(congrats.descendants().any { it.element.text.startsWith("10 new cards held back") && it.isShown() })
         assertTrue(congrats.descendants().none { it.element.text.contains("due tomorrow") && it.isShown() })
@@ -129,17 +157,18 @@ class AnkiViewTest {
     @Test
     fun `learning cards are shown ahead of time once nothing else is left`() {
         val store = AnkiStore(clock)
+        val view = AnkiView(store)
         val deck = store.deck("Flowik API")
         action { deck[Deck::newPerDay] = 1 }
         store.study(deck)
-        val card = store.currentCard!!
+        val card = store.card(view.cardFront())
 
-        store.showAnswer()
-        store.answer(Answer.GOOD)
+        view.answer(Answer.GOOD)
 
         // Due in ten minutes, but within the learn-ahead limit and the only card left.
         assertEquals(CardState.LEARNING, card[Card::schedule].state)
-        assertSame(card, store.currentCard)
+        assertEquals(card[Card::front], view.cardFront())
+        assertTrue(view.shown("anki-card-back").isEmpty(), "the same card comes back with its question")
         assertEquals(1, store.queueOf(deck).learnCount)
     }
 

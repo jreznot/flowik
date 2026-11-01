@@ -2,15 +2,7 @@ package demo.vaadin.anki
 
 import com.vaadin.flow.spring.annotation.SpringComponent
 import com.vaadin.flow.spring.annotation.UIScope
-import flowik.core.Computed
-import flowik.core.ObservableEntity
-import flowik.core.ObservableList
-import flowik.core.Store
-import flowik.core.action
-import flowik.core.computed
-import flowik.core.observable
-import flowik.core.observableRef
-import flowik.core.observables
+import flowik.core.*
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
@@ -20,7 +12,12 @@ import java.time.ZoneId
 sealed interface Screen {
     data object Decks : Screen
     data class Overview(val deck: ObservableEntity<Deck>) : Screen
-    data class Study(val deck: ObservableEntity<Deck>) : Screen
+
+    /**
+     * Studying [deck]. [resume] is the card to show first — the one an undo
+     * just brought back — rather than whatever the queue would pick.
+     */
+    data class Study(val deck: ObservableEntity<Deck>, val resume: ObservableEntity<Card>? = null) : Screen
 
     /** The card browser, for one deck or — with `null` — for all of them. */
     data class Browse(val deck: ObservableEntity<Deck>?) : Screen
@@ -69,8 +66,13 @@ class DeckQueue(
 }
 
 /**
- * Every piece of application state, as observables, in memory: the decks, the
- * cards, the review log, and where the user is.
+ * The application's state, as observables, in memory: the decks, the cards,
+ * the review log, the clock, and which screen is showing.
+ *
+ * It holds what more than one screen depends on, and nothing else. The state
+ * of a study session — which card is up, whether its answer is showing — is
+ * read by the study screen alone, so it lives there; the store's actions take
+ * the card they act on as an argument instead.
  *
  * The queues are *derived*: nothing keeps a list of due cards up to date.
  * [queues] is computed from the cards' schedules, the review log and the clock,
@@ -99,14 +101,10 @@ class AnkiStore(
     val log = ObservableList<ReviewEntry>()
 
     var screen by observableRef<Screen>(Screen.Decks, name = "screen")
-    var answerShown by observable(false, name = "answerShown")
 
     /** How far the demo has moved the clock ahead of real time. */
     var timeShift by observable(Duration.ZERO, name = "timeShift")
     var now by observable(clock.instant(), name = "now")
-
-    /** A card brought back by undo, shown before anything else in its deck. */
-    private var undone by observableRef<ObservableEntity<Card>?>(null, name = "undone")
 
     private var lastId = 0L
 
@@ -120,18 +118,6 @@ class AnkiStore(
         decks.items.associate { deck ->
             deck.id to buildQueue(deck, cardsByDeck[deck.id].orEmpty(), doneToday.filter { it.card.deckId == deck.id })
         }
-    }
-
-    /** The card being studied, or `null` outside the study screen and once the deck is done. */
-    val currentCard: ObservableEntity<Card>? by computed {
-        val study = screen as? Screen.Study ?: return@computed null
-        undone?.takeIf { it.deckId == study.deck.id } ?: queueOf(study.deck).next
-    }
-
-    /** The intervals shown above the answer buttons for the current card. */
-    val answerLabels: Map<Answer, String> by computed {
-        val card = currentCard ?: return@computed emptyMap()
-        scheduler.preview(card[Card::schedule], now, zone).mapValues { scheduler.intervalLabel(it.value, now) }
     }
 
     val studiedToday by computed { log.items.count { localDate(it.time, zone) == today } }
@@ -148,6 +134,14 @@ class AnkiStore(
         cards.items.filter { it.deckId == deck.id }
 
     fun deckOf(card: ObservableEntity<Card>): ObservableEntity<Deck>? = decks.items.find { it.id == card.deckId }
+
+    /**
+     * When [card] would come back for each answer — the labels above the answer
+     * buttons. Reads the card's schedule and the clock, so a binding showing it
+     * follows both.
+     */
+    fun intervalLabels(card: ObservableEntity<Card>): Map<Answer, String> =
+        scheduler.preview(card[Card::schedule], now, zone).mapValues { scheduler.intervalLabel(it.value, now) }
 
     private fun buildQueue(
         deck: ObservableEntity<Deck>,
@@ -215,37 +209,28 @@ class AnkiStore(
     private fun navigate(target: Screen) = action {
         tick()
         screen = target
-        answerShown = false
-        undone = null
     }
 
     // Studying
 
-    fun showAnswer() = action {
-        if (currentCard != null) answerShown = true
-    }
-
-    fun answer(answer: Answer) = action {
-        val card = currentCard ?: return@action
-        if (!answerShown) return@action
-
+    /** Schedules [card] according to [answer], and logs it so it counts towards today and can be undone. */
+    fun answer(card: ObservableEntity<Card>, answer: Answer) = action {
         val before = card[Card::schedule]
         card[Card::schedule] = scheduler.answer(before, answer, now, zone)
         log.add(ReviewEntry(card, now, answer, before))
-        answerShown = false
-        undone = null
         tick()
     }
 
-    /** Takes the last answer back and shows that card again, as Anki's Undo does. */
+    /**
+     * Takes the last answer back and studies that card again, as Anki's Undo
+     * does — in its own deck, which need not be the one on screen.
+     */
     fun undo() = action {
         val entry = log.items.lastOrNull() ?: return@action
         log.removeAt(log.size - 1)
         entry.card[Card::schedule] = entry.before
         tick()
-        deckOf(entry.card)?.let { screen = Screen.Study(it) }
-        answerShown = false
-        undone = entry.card
+        deckOf(entry.card)?.let { screen = Screen.Study(it, resume = entry.card) }
     }
 
     // Decks
@@ -283,7 +268,25 @@ class AnkiStore(
     fun deleteCard(card: ObservableEntity<Card>) = action {
         log.removeAll { it.card === card }
         cards.remove(card)
-        if (undone === card) undone = null
+    }
+
+    /** Replaces both sides of [card]; blank sides are ignored. */
+    fun updateCard(card: ObservableEntity<Card>, front: String, back: String) = action {
+        if (front.isBlank() || back.isBlank()) return@action
+        card[Card::front] = front.trim()
+        card[Card::back] = back.trim()
+    }
+
+    /**
+     * Applies the editable settings in [changes] — name, description and daily
+     * limits — to [deck]. A name that is empty or taken is left as it was.
+     */
+    fun updateDeck(deck: ObservableEntity<Deck>, changes: Deck) = action {
+        val name = changes.name.trim()
+        if (name.isNotEmpty() && !isDeckNameTaken(name, except = deck)) deck[Deck::name] = name
+        deck[Deck::description] = changes.description
+        deck[Deck::newPerDay] = changes.newPerDay.coerceAtLeast(0)
+        deck[Deck::reviewsPerDay] = changes.reviewsPerDay.coerceAtLeast(0)
     }
 
     /** Anki's "Forget": the card starts over as a new card. */

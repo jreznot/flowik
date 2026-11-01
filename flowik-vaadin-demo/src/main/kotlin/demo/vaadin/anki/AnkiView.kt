@@ -3,95 +3,109 @@ package demo.vaadin.anki
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.dependency.StyleSheet
 import com.vaadin.flow.component.html.Div
-import com.vaadin.flow.component.html.NativeButton
-import com.vaadin.flow.component.html.Span
-import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 import flowik.core.Bindings
 import flowik.core.ObservableEntity
-import flowik.vaadin.activeWhen
 import flowik.vaadin.childSwitch
 import flowik.vaadin.disposeOnDetach
-import flowik.vaadin.onClick
-import flowik.vaadin.text
-import flowik.vaadin.visible
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-private val TODAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.ENGLISH)
 
 /**
  * An Anki-style flashcard app: decks, the card browser, and the study loop
  * with Anki's SM-2 scheduling, all kept in memory by [AnkiStore].
  *
- * The page is a top bar over one screen, chosen by [AnkiStore.screen]: the
- * content is a `childSwitch` over it, so navigating is writing that one atom
- * and the screen left behind is disposed with its bindings.
+ * State is hoisted, as in Jetpack Compose. This is the only class that knows
+ * [AnkiStore]; every component below it is stateless with respect to the app:
+ * it gets the state it shows — as suppliers its bindings read, so it stays
+ * reactive — and reports what the user does through `on…` callbacks, which
+ * this class turns into store actions. A component can therefore be built in
+ * a test from plain observables, or reused over any other state source.
  *
- * The view is the root of the UI's lifetime — the group is released when it
- * is detached — and the owner of the dialogs the screens ask for.
+ * The page is a [TopBar] over one screen, chosen by [AnkiStore.screen]: the
+ * content is a `childSwitch` over it, so navigating is writing that one atom
+ * and the screen left behind is disposed with its bindings. The view is the
+ * root of the UI's lifetime — the group is released when it is detached.
  */
 @Route("anki")
 @PageTitle("Flowik Anki")
 @StyleSheet("anki.css")
-class AnkiView(private val store: AnkiStore) : Div(), Bindings by Bindings(), AnkiDialogs {
+class AnkiView(private val store: AnkiStore) : Div(), Bindings by Bindings() {
 
     init {
         addClassName("anki")
         store.tick()
+
+        val topBar = register(
+            TopBar(
+                today = store::today,
+                daysShifted = store::daysShifted,
+                browsing = { store.screen is Screen.Browse },
+                onDecks = store::showDecks,
+                onAddCards = { openAddCards(currentDeck()) },
+                onBrowse = { store.browse(currentDeck()) },
+                onNextDay = store::skipDay
+            )
+        )
 
         val content = Div().apply {
             addClassName("anki-content")
             childSwitch(store::screen, ::screenFor)
         }
 
-        add(topBar(), content)
+        add(topBar, content)
         disposeOnDetach()
     }
 
     private fun screenFor(screen: Screen): Component = when (screen) {
-        Screen.Decks -> DeckList(store, this)
-        is Screen.Overview -> DeckOverview(store, screen.deck, this)
-        is Screen.Study -> StudyScreen(store, screen.deck, this)
-        is Screen.Browse -> CardBrowser(store, screen.deck, this)
-    }
+        Screen.Decks -> DeckList(
+            decks = store.decks,
+            queueOf = store::queueOf,
+            studiedToday = store::studiedToday,
+            onOpenDeck = store::showOverview,
+            onDeckOptions = ::openDeckOptions,
+            onCreateDeck = ::openCreateDeck,
+            onAddCards = { openAddCards(null) }
+        )
 
-    private fun topBar(): Div {
-        val logo = Span("flowik").apply {
-            addClassName("anki-logo")
-            add(Span(" anki").apply { addClassName("anki-logo-mark") })
-        }
+        is Screen.Overview -> DeckOverview(
+            deck = screen.deck,
+            queue = { store.queueOf(screen.deck) },
+            onStudy = { store.study(screen.deck) },
+            onBack = store::showDecks,
+            onAddCards = { openAddCards(screen.deck) },
+            onBrowse = { store.browse(screen.deck) },
+            onOptions = { openDeckOptions(screen.deck) }
+        )
 
-        fun navItem(title: String, isActive: () -> Boolean, onClick: () -> Unit) = NativeButton(title).apply {
-            addClassName("anki-nav-item")
-            activeWhen { isActive() }
-            onClick(onClick)
-        }
+        is Screen.Study -> StudyScreen(
+            deck = screen.deck,
+            queue = { store.queueOf(screen.deck) },
+            resume = screen.resume,
+            intervalLabels = store::intervalLabels,
+            canUndo = store::canUndo,
+            onAnswer = store::answer,
+            onUndo = store::undo,
+            onEdit = ::openEditCard,
+            onForget = store::forgetCard,
+            onDelete = store::deleteCard,
+            onBack = { store.showOverview(screen.deck) },
+            onDecks = store::showDecks
+        )
 
-        val nav = Div(
-            navItem("Decks", { store.screen !is Screen.Browse }, store::showDecks),
-            navItem("Add", { false }) { addCards(currentDeck()) },
-            navItem("Browse", { store.screen is Screen.Browse }) { store.browse(currentDeck()) }
-        ).apply { addClassName("anki-nav") }
-
-        val today = Span().apply {
-            addClassName("anki-today")
-            text { TODAY_FORMAT.format(store.today) }
-        }
-        val shifted = Span().apply {
-            addClassName("anki-shifted")
-            text { "+${plural(store.daysShifted, "day")}" }
-            visible { store.daysShifted > 0 }
-        }
-        val nextDay = NativeButton("Next day").apply {
-            addClassName("anki-next-day")
-            add(VaadinIcon.FORWARD.create())
-            element.setAttribute("title", "Move the clock one day ahead, so tomorrow's reviews fall due")
-            onClick { store.skipDay() }
-        }
-
-        return Div(logo, nav, Spacer(), today, shifted, nextDay).apply { addClassName("anki-top-bar") }
+        is Screen.Browse -> CardBrowser(
+            deck = screen.deck,
+            decks = { store.decks.items },
+            cards = { screen.deck?.let(store::cardsOf) ?: store.cards.items },
+            deckName = { card -> store.deckOf(card)?.get(Deck::name).orEmpty() },
+            now = store::now,
+            zone = store.zone,
+            onSelectDeck = store::browse,
+            onAddCards = { openAddCards(screen.deck) },
+            onEditCard = ::openEditCard,
+            onForgetCard = store::forgetCard,
+            onDeleteCard = store::deleteCard,
+            onBack = store::showDecks
+        )
     }
 
     /** The deck the current screen is about, if any — where Add and Browse start. */
@@ -102,19 +116,36 @@ class AnkiView(private val store: AnkiStore) : Div(), Bindings by Bindings(), An
         is Screen.Browse -> screen.deck
     }
 
-    override fun addCards(deck: ObservableEntity<Deck>?) {
-        if (store.decks.isEmpty()) createDeck() else AddCardsDialog(store, deck).open()
+    // Dialogs — opened here, so they are wired to the store the same way the screens are.
+
+    private fun openAddCards(deck: ObservableEntity<Deck>?) {
+        if (store.decks.isEmpty()) return openCreateDeck()
+        AddCardsDialog(
+            decks = { store.decks.items },
+            initialDeck = deck ?: store.decks.items.first(),
+            onAdd = { target, front, back -> store.addCard(target, front, back) }
+        ).open()
     }
 
-    override fun editCard(card: ObservableEntity<Card>) {
-        EditCardDialog(store, card).open()
+    private fun openEditCard(card: ObservableEntity<Card>) {
+        EditCardDialog(
+            card,
+            deckName = { store.deckOf(card)?.get(Deck::name).orEmpty() },
+            onSave = { front, back -> store.updateCard(card, front, back) }
+        ).open()
     }
 
-    override fun deckOptions(deck: ObservableEntity<Deck>) {
-        DeckOptionsDialog(store, deck).open()
+    private fun openDeckOptions(deck: ObservableEntity<Deck>) {
+        DeckOptionsDialog(
+            deck,
+            cardCount = { store.cardsOf(deck).size },
+            isNameTaken = { store.isDeckNameTaken(it, except = deck) },
+            onSave = { changes -> store.updateDeck(deck, changes) },
+            onDelete = { store.deleteDeck(deck) }
+        ).open()
     }
 
-    override fun createDeck() {
+    private fun openCreateDeck() {
         CreateDeckDialog(isNameTaken = { store.isDeckNameTaken(it) }, onCreate = { store.createDeck(it) }).open()
     }
 }

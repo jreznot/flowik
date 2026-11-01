@@ -13,23 +13,23 @@ import flowik.core.MutableObservable
 import flowik.core.ObservableEntity
 import flowik.core.observable
 import flowik.core.viewmodel.createViewModel
-import flowik.vaadin.Button
-import flowik.vaadin.disposeOnDetach
-import flowik.vaadin.enabled
-import flowik.vaadin.items
-import flowik.vaadin.text
-import flowik.vaadin.value
+import flowik.vaadin.*
+import java.util.function.Supplier
 
 /**
  * Anki's Add window: pick a deck, type both sides, Add — and the dialog stays
  * open for the next card, as Anki's does. Ctrl+Enter adds too.
  *
- * Each side is an atom local to the dialog; Add hands them to the store and
- * clears them.
+ * What is being typed is the dialog's own state, since nothing else reads it;
+ * the finished card is reported to [onAdd], and the fields are cleared.
+ *
+ * @param decks       the decks to choose from; one created meanwhile shows up
+ * @param initialDeck the deck selected when the dialog opens
  */
 class AddCardsDialog(
-    private val store: AnkiStore,
-    deck: ObservableEntity<Deck>?
+    decks: Supplier<List<ObservableEntity<Deck>>>,
+    initialDeck: ObservableEntity<Deck>?,
+    private val onAdd: (deck: ObservableEntity<Deck>, front: String, back: String) -> Unit
 ) : Dialog(), Bindings by Bindings() {
 
     private val front = observable("", name = "front")
@@ -39,8 +39,8 @@ class AddCardsDialog(
     private val deckSelect = Select<ObservableEntity<Deck>>().apply {
         label = "Deck"
         setItemLabelGenerator { it[Deck::name] }
-        items { store.decks.items }
-        value = deck ?: store.decks.items.firstOrNull()
+        items(decks)
+        value = initialDeck
         setWidthFull()
     }
 
@@ -77,7 +77,8 @@ class AddCardsDialog(
 
     private fun addCard() {
         val target = deckSelect.value ?: return
-        if (store.addCard(target, front.value, back.value) == null) return
+        if (front.value.isBlank() || back.value.isBlank()) return
+        onAdd(target, front.value, back.value)
         front.value = ""
         back.value = ""
         added.value += 1
@@ -86,12 +87,16 @@ class AddCardsDialog(
 }
 
 /**
- * Edits one card through a buffer: the fields write to a view model, and only
- * Save submits it to the card. The card info below follows the live schedule.
+ * Edits one card. The fields write to a buffer over [card], so the card itself
+ * is never touched from here: Save reports both sides to [onSave], and Cancel
+ * simply drops the buffer. The card info below follows the live schedule.
+ *
+ * @param deckName the name of the card's deck, shown in the card info
  */
 class EditCardDialog(
-    store: AnkiStore,
-    card: ObservableEntity<Card>
+    card: ObservableEntity<Card>,
+    deckName: Supplier<String>,
+    onSave: (front: String, back: String) -> Unit
 ) : Dialog(), Bindings by Bindings() {
 
     private val form = createViewModel(card)
@@ -116,9 +121,8 @@ class EditCardDialog(
         val info = Caption(classNames = arrayOf("anki-muted", "anki-card-info")).apply {
             text {
                 val s = card[Card::schedule]
-                val deckName = store.deckOf(card)?.get(Deck::name).orEmpty()
                 buildList {
-                    add(deckName)
+                    add(deckName.get())
                     add(s.state.title)
                     if (s.intervalDays > 0) add("interval ${formatDays(s.intervalDays)}")
                     if (s.ease > 0) add("ease ${(s.ease * 100).toInt()}%")
@@ -133,7 +137,7 @@ class EditCardDialog(
         footer.add(
             Button("Cancel") { close() },
             Button("Save") {
-                form.submit()
+                onSave(form[Card::front], form[Card::back])
                 close()
             }.apply {
                 addThemeVariants(ButtonVariant.PRIMARY)

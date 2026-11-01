@@ -7,23 +7,11 @@ import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.shared.Tooltip
 import flowik.core.Bindings
-import flowik.core.ObservableEntity
 import flowik.vaadin.className
 import flowik.vaadin.onClick
 import flowik.vaadin.text
 import flowik.vaadin.visible
 import java.util.function.Supplier
-
-/**
- * The dialogs the screens can ask for. The view owns them, so a screen only
- * says *what* it wants edited — and a test can stand in for the view.
- */
-interface AnkiDialogs {
-    fun addCards(deck: ObservableEntity<Deck>?)
-    fun editCard(card: ObservableEntity<Card>)
-    fun deckOptions(deck: ObservableEntity<Deck>)
-    fun createDeck()
-}
 
 /** A plain text span with extra classes. */
 fun Caption(text: String = "", vararg classNames: String): Span = Span(text).apply {
