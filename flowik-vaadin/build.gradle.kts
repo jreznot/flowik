@@ -1,7 +1,5 @@
 plugins {
     id("io.spring.dependency-management") version "1.1.7"
-    // Test helpers for apps built on the module: testImplementation(testFixtures(…))
-    `java-test-fixtures`
 }
 
 extra["vaadinVersion"] = "25.3.3"
@@ -12,6 +10,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
+    testImplementation(project(":flowik-vaadin-testing"))
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

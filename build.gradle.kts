@@ -2,7 +2,7 @@ plugins {
     kotlin("jvm") version "2.2.20"
 }
 
-val publishedModules = setOf("flowik-core", "flowik-swing", "flowik-vaadin", "flowik-intellij")
+val publishedModules = setOf("flowik-core", "flowik-swing", "flowik-vaadin", "flowik-vaadin-testing", "flowik-intellij")
 
 allprojects {
     group = "com.github.jreznot.flowik"

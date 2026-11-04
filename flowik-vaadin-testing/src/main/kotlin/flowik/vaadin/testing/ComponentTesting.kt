@@ -13,7 +13,7 @@ import com.vaadin.flow.internal.nodefeature.ElementListenerMap
  * browser: find components, check what the user can see, and send the events
  * a browser would — clicks, DOM events, edits typed into a field.
  *
- *     testImplementation(testFixtures(project(":flowik-vaadin")))
+ *     testImplementation("com.github.jreznot.flowik:flowik-vaadin-testing:…")
  *
  * Bindings only write back what comes *from the client*, so a test that sets
  * `field.value` directly checks nothing; [setValueFromClient] is the edit the

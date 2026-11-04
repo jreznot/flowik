@@ -15,6 +15,7 @@ The library is split into a framework-agnostic core and three UI-binding modules
 | `flowik-core`     | Reactive primitives: observables, computed, autoRun, reactions, actions |
 | `flowik-swing`    | Bindings for Swing components                                           |
 | `flowik-vaadin`   | Bindings for Vaadin Flow components                                     |
+| `flowik-vaadin-testing` | Server-side test helpers for views built with `flowik-vaadin`     |
 | `flowik-intellij` | Bindings for the IntelliJ Platform [Kotlin UI DSL][ij:ui-dsl]           |
 
 Most users only need **one** of `flowik-swing`, `flowik-vaadin` or `flowik-intellij` — all three pull
@@ -233,7 +234,7 @@ Data components and forms have bindings of their own:
 - `menu.item("Delete") { store.delete(card) }` adds a menu item whose click runs as an action, and
   `checked(store::showDone.asObservable())` binds a checkable item two-way.
 
-For tests, `testImplementation(testFixtures("com.github.jreznot.flowik:flowik-vaadin:…"))` brings
+For tests, `testImplementation("com.github.jreznot.flowik:flowik-vaadin-testing:…")` brings
 server-side helpers: `find<T>()`, `isShown()`, `simulateClick()`, `fireDomEvent(…)`, and
 `setValueFromClient(…)` — the client edit that a two-way binding writes back.
 
