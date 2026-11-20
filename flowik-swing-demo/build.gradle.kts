@@ -20,3 +20,10 @@ tasks.register<JavaExec>("runObsidian") {
     mainClass.set("demo.swing.ObsidianAppKt")
     classpath = sourceSets["main"].runtimeClasspath
 }
+
+tasks.register<JavaExec>("runCoffeeTracker") {
+    group = "application"
+    description = "Runs the Coffee Tracker demo"
+    mainClass.set("demo.swing.CoffeeTrackerAppKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
